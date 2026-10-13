@@ -1,412 +1,322 @@
 <!DOCTYPE html>
 <html lang="ru" data-theme="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Аниме-Архив</title>
-    
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-    
-    <!-- Font Awesome для иконок -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Стили -->
-    <link rel="stylesheet" href="css/styles.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Аниме-Бунко — личный каталог просмотренного</title>
+  <meta name="description" content="Аниме-Бунко — личный каталог просмотренных аниме: тиры, статистика, календарь просмотра и настройки.">
+  <meta name="theme-color" content="#12121a">
+
+  <!-- Фавикон: катакана «бэ» (инлайн, без внешних файлов) -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%2312121a'/%3E%3Ctext x='32' y='44' font-size='32' text-anchor='middle' fill='%23ff4d6d' font-family='sans-serif' font-weight='bold'%3E%E3%83%96%3C/text%3E%3C/svg%3E">
+
+  <!-- Шрифты: Unbounded — заголовки/тиры, Manrope — текст (оба с кириллицей) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/styles.css">
 </head>
+<!-- Режим владельца включается адресом index.html?mode=owner
+     (admin.html — короткий редирект на этот адрес). -->
+
 <body>
-    <!-- Фоновая анимация частиц -->
-    <canvas id="particles-canvas"></canvas>
+  <!-- ================= ФОНОВЫЕ СЛОИ ================= -->
+  <!-- Градиентная аура: три размытых пятна, медленный дрейф (CSS) + параллакс (app.js) -->
+  <div class="bg-aura" aria-hidden="true">
+    <span class="aura aura--1"></span>
+    <span class="aura aura--2"></span>
+    <span class="aura aura--3"></span>
+  </div>
+  <!-- Холст частиц фоновой анимации (сакура, снег и т.д. — js/particles.js) -->
+  <canvas id="fx-canvas" aria-hidden="true"></canvas>
 
-    <!-- Шапка -->
-    <header class="glass-header">
-        <div class="logo">
-            <i class="fa-solid fa-dragon"></i>
-            <span>Аниме-Архив</span>
-            <span id="owner-badge" class="hidden"><i class="fa-solid fa-crown"></i> Владелец</span>
-        </div>
-        
-        <div class="search-filters">
-            <div class="search-box">
-                <i class="fa-solid fa-search"></i>
-                <input type="text" id="global-search" placeholder="Поиск по названию...">
-            </div>
-            <select id="filter-tier">
-                <option value="all">Все тиры</option>
-                <option value="SSS">SSS</option>
-                <option value="S">S</option>
-                <option value="A">A</option>
-                <option value="B">B</option>
-                <option value="C">C</option>
-                <option value="D">D</option>
-                <option value="E">E</option>
-            </select>
-            <select id="filter-type">
-                <option value="all">Все типы</option>
-                <option value="TV-сериал">TV-сериал</option>
-                <option value="Фильм">Фильм</option>
-                <option value="OVA">OVA</option>
-                <option value="ONA">ONA</option>
-            </select>
-            <label class="checkbox-label">
-                <input type="checkbox" id="filter-favorite">
-                <i class="fa-solid fa-heart"></i> Любимые
-            </label>
-        </div>
+  <!-- ================= ШАПКА ================= -->
+  <header class="site-header">
+    <div class="header-inner">
 
-        <div class="header-actions">
-            <button id="btn-settings" class="icon-btn" title="Настройки"><i class="fa-solid fa-gear"></i></button>
-            <button id="btn-github-auth" class="icon-btn hidden" title="Настроить GitHub Token"><i class="fa-brands fa-github"></i></button>
-            <button id="btn-add-title" class="btn-primary hidden"><i class="fa-solid fa-plus"></i> Добавить</button>
-            <button id="btn-logout" class="icon-btn hidden" title="Выйти из режима владельца"><i class="fa-solid fa-right-from-bracket"></i></button>
-        </div>
-    </header>
+      <!-- Бургер (виден только на мобильных) — открывает боковое меню -->
+      <button class="icon-btn burger" id="btn-burger" aria-label="Открыть меню">
+        <svg class="icon"><use href="#i-menu"/></svg>
+      </button>
 
-    <!-- Навигация (Табы) -->
-    <nav class="tabs-nav glass-panel">
-        <button class="tab-btn active" data-tab="archive"><i class="fa-solid fa-layer-group"></i> Архив</button>
-        <button class="tab-btn" data-tab="stats"><i class="fa-solid fa-chart-pie"></i> Статистика</button>
-        <button class="tab-btn" data-tab="calendar"><i class="fa-solid fa-calendar-days"></i> Календарь</button>
+      <!-- Логотип -->
+      <a class="logo" href="#" id="logo">
+        <span class="logo-kana">ブンコ</span>
+        <span class="logo-main">БУНКО</span>
+      </a>
+
+      <!-- Бейдж режима (рендерится в app.js: «Режим просмотра» / «Режим владельца») -->
+      <span class="mode-badge" id="mode-badge" hidden></span>
+
+      <!-- Поиск по названию -->
+      <div class="search-box" id="search-box">
+        <svg class="icon search-icon"><use href="#i-search"/></svg>
+        <input type="search" id="search-input" placeholder="Поиск по названию…" autocomplete="off" spellcheck="false">
+        <button class="search-clear" id="search-clear" hidden aria-label="Очистить поиск">
+          <svg class="icon"><use href="#i-x"/></svg>
+        </button>
+      </div>
+
+      <!-- Кнопки действий -->
+      <div class="header-actions">
+        <!-- Фильтры: раскрывает панель под шапкой; точка — индикатор активных фильтров -->
+        <button class="icon-btn" id="btn-filters" aria-label="Фильтры" title="Фильтры" aria-expanded="false">
+          <svg class="icon"><use href="#i-filter"/></svg>
+          <span class="filter-dot" id="filters-dot" hidden></span>
+        </button>
+        <!-- Добавить тайтл — только в режиме владельца (app.js снимет hidden) -->
+        <button class="icon-btn icon-btn--accent" id="btn-add" hidden aria-label="Добавить тайтл" title="Добавить тайтл">
+          <svg class="icon"><use href="#i-plus"/></svg>
+        </button>
+        <!-- Шестерёнка — открывает вкладку «Настройки» -->
+        <button class="icon-btn" id="btn-settings" aria-label="Настройки" title="Настройки">
+          <svg class="icon"><use href="#i-gear"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Раскрывающаяся панель фильтров (содержимое рендерит app.js в #filters-body) -->
+    <div class="filters-panel" id="filters-panel" hidden>
+      <div id="filters-body"></div>
+      <button class="btn btn--ghost btn--small" id="btn-filters-reset">
+        <svg class="icon"><use href="#i-x"/></svg>Сбросить фильтры
+      </button>
+    </div>
+  </header>
+
+  <!-- ================= НАВИГАЦИЯ (вкладки) ================= -->
+  <nav class="tabs" id="tabs" aria-label="Разделы">
+    <button class="tab-btn is-active" data-tab="archive">
+      <svg class="icon"><use href="#i-archive"/></svg><span>Архив</span>
+    </button>
+    <button class="tab-btn" data-tab="stats">
+      <svg class="icon"><use href="#i-chart"/></svg><span>Статистика</span>
+    </button>
+    <button class="tab-btn" data-tab="calendar">
+      <svg class="icon"><use href="#i-calendar"/></svg><span>Календарь</span>
+    </button>
+    <button class="tab-btn" data-tab="settings">
+      <svg class="icon"><use href="#i-sliders"/></svg><span>Настройки</span>
+    </button>
+  </nav>
+
+  <main class="page">
+
+    <!-- ================= ВКЛАДКА: АРХИВ ================= -->
+    <section class="tab-panel is-active" id="tab-archive">
+      <h1 class="visually-hidden">Архив просмотренных тайтлов</h1>
+
+      <!-- Лента «Последние добавленные»: 10 последних тайтлов, без дат -->
+      <div class="recent-wrap">
+        <div class="block-head">
+          <h2 class="block-title">Последние добавленные</h2>
+          <span class="block-note" id="recent-count"></span>
+        </div>
+        <div class="recent-strip" id="recent-strip"></div>
+      </div>
+
+      <!-- Панель тиров: по центру, количество + процент (рендер app.js) -->
+      <div class="tier-bar" id="tier-bar"></div>
+
+      <!-- Тулбар: счётчик найденного + переключатель вида отображения -->
+      <div class="archive-toolbar">
+        <p class="toolbar-count" id="toolbar-count"></p>
+        <div class="view-switch" id="view-switch" role="group" aria-label="Вид отображения">
+          <button class="view-btn is-active" data-view="grid" title="Сетка" aria-label="Сетка">
+            <svg class="icon"><use href="#i-grid"/></svg>
+          </button>
+          <button class="view-btn" data-view="list" title="Список" aria-label="Список">
+            <svg class="icon"><use href="#i-list"/></svg>
+          </button>
+          <button class="view-btn" data-view="compact" title="Компактный список" aria-label="Компактный список">
+            <svg class="icon"><use href="#i-rows"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Секции тиров SSS → E (рендер app.js; внутри — сетки карточек + SortableJS) -->
+      <div id="tier-sections"></div>
+
+      <!-- Пустое состояние: когда поиск/фильтры ничего не нашли -->
+      <div class="empty-state" id="empty-state" hidden>
+        <svg class="icon empty-icon"><use href="#i-search"/></svg>
+        <p class="empty-title">Ничего не найдено</p>
+        <p class="empty-note">Попробуйте изменить запрос или сбросить фильтры</p>
+      </div>
+    </section>
+
+    <!-- ================= ВКЛАДКА: СТАТИСТИКА ================= -->
+    <section class="tab-panel" id="tab-stats" hidden>
+      <!-- Крупные цифры-сводка (заполняет js/stats.js): тайтлы, фильмы, сериалы, серии, часы -->
+      <div class="stats-hero" id="stats-hero"></div>
+
+      <div class="stats-cards">
+        <div class="stat-card">
+          <div class="stat-card-head"><h3>Любимые жанры</h3></div>
+          <div class="chart-box"><canvas id="chart-genres"></canvas></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-head"><h3>Распределение по тирам</h3></div>
+          <div class="chart-box chart-box--donut"><canvas id="chart-tiers"></canvas></div>
+        </div>
+      </div>
+
+      <div class="stat-card stat-card--wide">
+        <div class="stat-card-head">
+          <h3>Динамика просмотра по месяцам</h3>
+          <span class="block-note" id="months-note"></span>
+        </div>
+        <div class="chart-box chart-box--line"><canvas id="chart-months"></canvas></div>
+      </div>
+    </section>
+
+    <!-- ================= ВКЛАДКА: КАЛЕНДАРЬ ================= -->
+    <section class="tab-panel" id="tab-calendar" hidden>
+      <div class="cal-toolbar">
+        <!-- Переключатель «Календарь ↔ Список» -->
+        <div class="segment" id="cal-switch" role="group" aria-label="Режим просмотра календаря">
+          <button class="segment-btn is-active" data-cal="grid">Календарь</button>
+          <button class="segment-btn" data-cal="list">Список</button>
+        </div>
+        <!-- Навигация по месяцам -->
+        <div class="cal-nav">
+          <button class="icon-btn" id="cal-prev" aria-label="Предыдущий месяц">
+            <svg class="icon"><use href="#i-chevron-left"/></svg>
+          </button>
+          <button class="cal-title" id="cal-title">—</button>
+          <button class="icon-btn" id="cal-next" aria-label="Следующий месяц">
+            <svg class="icon"><use href="#i-chevron-right"/></svg>
+          </button>
+          <button class="btn btn--ghost btn--small" id="cal-today">Сегодня</button>
+        </div>
+      </div>
+
+      <!-- Режим «Календарь»: месячная сетка (дни рендерит app.js) -->
+      <div id="calendar-view">
+        <div class="cal-weekdays" aria-hidden="true">
+          <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
+        </div>
+        <div class="cal-grid" id="cal-grid"></div>
+      </div>
+
+      <!-- Режим «Список»: все просмотры по датам, сгруппированные по месяцам -->
+      <div id="calendar-list" hidden></div>
+    </section>
+
+    <!-- ================= ВКЛАДКА: НАСТРОЙКИ ================= -->
+    <!-- js/admin.js вставляет сюда панель владельца (над #settings-body) в режиме ?mode=owner -->
+    <section class="tab-panel" id="tab-settings" hidden>
+      <div id="settings-body"><!-- Вся панель настроек рендерится в app.js --></div>
+    </section>
+  </main>
+
+  <!-- ================= ПОДВАЛ ================= -->
+  <footer class="site-footer">
+    <p>ブンコ Аниме-Бунко — личный каталог просмотренного · <span id="footer-year"></span></p>
+    <p class="footer-note">Данные каталога хранятся в файле data.json</p>
+  </footer>
+
+  <!-- ================= БОКОВОЕ МЕНЮ (мобильное) ================= -->
+  <div class="drawer-overlay" id="drawer-overlay" hidden></div>
+  <aside class="drawer" id="drawer" aria-hidden="true" aria-label="Меню">
+    <div class="drawer-head">
+      <span class="drawer-title">Меню</span>
+      <button class="icon-btn" id="drawer-close" aria-label="Закрыть меню">
+        <svg class="icon"><use href="#i-x"/></svg>
+      </button>
+    </div>
+    <nav class="drawer-nav">
+      <button class="drawer-link" data-tab="archive"><svg class="icon"><use href="#i-archive"/></svg>Архив</button>
+      <button class="drawer-link" data-tab="stats"><svg class="icon"><use href="#i-chart"/></svg>Статистика</button>
+      <button class="drawer-link" data-tab="calendar"><svg class="icon"><use href="#i-calendar"/></svg>Календарь</button>
+      <button class="drawer-link" data-tab="settings"><svg class="icon"><use href="#i-sliders"/></svg>Настройки</button>
     </nav>
-
-    <!-- Основной контент -->
-    <main class="content-area">
-        
-        <!-- Вкладка: Архив -->
-        <section id="tab-archive" class="tab-content active">
-            <!-- Лента последних добавленных -->
-            <div class="recent-ribbon glass-panel">
-                <h3><i class="fa-solid fa-clock-rotate-left"></i> Последние добавленные</h3>
-                <div class="recent-scroll" id="recent-list">
-                    <!-- Заполняется через JS -->
-                </div>
-            </div>
-
-            <!-- Контейнер для тиров (генерируется JS) -->
-            <div id="tiers-container">
-                <!-- Пример структуры, которую создаст JS:
-                <div class="tier-section" data-tier="SSS">
-                    <div class="tier-header">
-                        <div class="tier-3d-letter letter-sss">SSS</div>
-                        <div class="tier-stats">12 тайтлов (15%)</div>
-                    </div>
-                    <div class="tier-grid" id="grid-SSS"></div>
-                </div>
-                -->
-            </div>
-        </section>
-
-        <!-- Вкладка: Статистика -->
-        <section id="tab-stats" class="tab-content">
-            <div class="stats-summary glass-panel">
-                <div class="stat-card">
-                    <div class="stat-value" id="stat-total-titles">0</div>
-                    <div class="stat-label">Всего тайтлов</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="stat-total-episodes">0</div>
-                    <div class="stat-label">Всего серий</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="stat-total-time">0 ч</div>
-                    <div class="stat-label">Общее время</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="stat-movies-time">0 ч</div>
-                    <div class="stat-label">Время фильмов</div>
-                </div>
-            </div>
-            
-            <div class="charts-grid">
-                <div class="chart-container glass-panel">
-                    <h3>Жанры</h3>
-                    <canvas id="chart-genres"></canvas>
-                </div>
-                <div class="chart-container glass-panel">
-                    <h3>Распределение по тирам</h3>
-                    <canvas id="chart-tiers"></canvas>
-                </div>
-                <div class="chart-container glass-panel full-width">
-                    <h3>Динамика просмотра по месяцам</h3>
-                    <canvas id="chart-monthly"></canvas>
-                </div>
-            </div>
-        </section>
-
-        <!-- Вкладка: Календарь -->
-        <section id="tab-calendar" class="tab-content">
-            <div class="calendar-controls glass-panel">
-                <button id="cal-prev"><i class="fa-solid fa-chevron-left"></i></button>
-                <h3 id="cal-month-year">Сентябрь 2023</h3>
-                <button id="cal-next"><i class="fa-solid fa-chevron-right"></i></button>
-                <div class="view-toggle">
-                    <button class="active" data-view="grid">Сетка</button>
-                    <button data-view="list">Список</button>
-                </div>
-            </div>
-            <div id="calendar-grid" class="calendar-grid glass-panel"></div>
-            <div id="calendar-list" class="calendar-list glass-panel hidden"></div>
-        </section>
-
-        <!-- Вкладка: Настройки -->
-        <section id="tab-settings" class="tab-content">
-            <div class="settings-grid">
-                <div class="settings-panel glass-panel">
-                    <h3><i class="fa-solid fa-palette"></i> Внешний вид</h3>
-                    <div class="setting-row">
-                        <label>Тема</label>
-                        <select id="set-theme">
-                            <option value="dark">Тёмная</option>
-                            <option value="light">Светлая</option>
-                        </select>
-                    </div>
-                    <div class="setting-row">
-                        <label>Акцентный цвет</label>
-                        <input type="color" id="set-accent" value="#a855f7">
-                    </div>
-                    <div class="setting-row">
-                        <label>Вид отображения архива</label>
-                        <select id="set-view-mode">
-                            <option value="grid">Сетка карточек</option>
-                            <option value="list">Список</option>
-                            <option value="compact">Компактный список</option>
-                        </select>
-                    </div>
-                    <div class="setting-row">
-                        <label>Колонок на десктопе</label>
-                        <input type="range" id="set-columns" min="4" max="12" value="8">
-                        <span id="set-columns-val">8</span>
-                    </div>
-                </div>
-
-                <div class="settings-panel glass-panel">
-                    <h3><i class="fa-solid fa-wand-magic-sparkles"></i> Анимация фона</h3>
-                    <div class="setting-row">
-                        <label>Пресет</label>
-                        <select id="set-particle-preset">
-                            <option value="sakura">Сакура (розовая)</option>
-                            <option value="white-sakura">Белая сакура</option>
-                            <option value="red-roses">Красные розы</option>
-                            <option value="white-petals">Белые лепестки</option>
-                            <option value="yellow-petals">Жёлтые лепестки</option>
-                            <option value="snow">Снег</option>
-                            <option value="rain">Ливень</option>
-                            <option value="drizzle">Морось</option>
-                            <option value="autumn">Осенние листья</option>
-                            <option value="fireflies">Светлячки</option>
-                            <option value="shooting-stars">Падающие звёзды</option>
-                            <option value="stardust">Звёздная пыль</option>
-                            <option value="bubbles">Пузырьки</option>
-                            <option value="confetti">Конфетти</option>
-                            <option value="feathers">Пёрышки</option>
-                            <option value="hearts">Сердечки</option>
-                            <option value="butterflies">Бабочки</option>
-                            <option value="clover">Зелёный клевер</option>
-                            <option value="sparks">Искры фейерверка</option>
-                            <option value="night-petals">Ночные синие лепестки</option>
-                        </select>
-                    </div>
-                    <div class="setting-row">
-                        <label>Плотность</label>
-                        <input type="range" id="set-particle-density" min="10" max="200" value="50">
-                    </div>
-                    <div class="setting-row">
-                        <label>Скорость</label>
-                        <input type="range" id="set-particle-speed" min="1" max="10" value="3">
-                    </div>
-                    <div class="setting-row">
-                        <label>Размер частиц</label>
-                        <input type="range" id="set-particle-size" min="2" max="20" value="8">
-                    </div>
-                    <div class="setting-row">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="set-anim-enabled" checked> Включить анимации
-                        </label>
-                    </div>
-                </div>
-
-                <div class="settings-panel glass-panel">
-                    <h3><i class="fa-solid fa-clock"></i> Расчёты времени</h3>
-                    <div class="setting-row">
-                        <label>Средняя длительность серии (мин)</label>
-                        <input type="number" id="set-default-ep-time" value="24">
-                    </div>
-                    <div class="setting-row">
-                        <label>Средняя длительность фильма (мин)</label>
-                        <input type="number" id="set-default-movie-time" value="110">
-                    </div>
-                </div>
-
-                <div class="settings-panel glass-panel">
-                    <h3><i class="fa-solid fa-database"></i> Данные</h3>
-                    <div class="setting-row">
-                        <button id="btn-export-json" class="btn-secondary"><i class="fa-solid fa-download"></i> Экспорт JSON</button>
-                        <button id="btn-import-json" class="btn-secondary"><i class="fa-solid fa-upload"></i> Импорт JSON</button>
-                        <input type="file" id="file-import" accept=".json" class="hidden">
-                    </div>
-                    <div class="setting-row" id="save-status">
-                        <span class="status-indicator">Статус: Данные загружены</span>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <!-- Модальное окно: Просмотр тайтла -->
-    <div id="modal-title-detail" class="modal-overlay hidden">
-        <div class="modal-content glass-panel large">
-            <button class="modal-close"><i class="fa-solid fa-xmark"></i></button>
-            <div class="detail-header">
-                <img id="detail-cover" src="" alt="Cover" class="detail-cover">
-                <div class="detail-info">
-                    <h2 id="detail-title">Название</h2>
-                    <h3 id="detail-original">Original Title</h3>
-                    <div class="detail-meta">
-                        <span id="detail-type" class="badge">TV</span>
-                        <span id="detail-tier" class="badge tier-badge">SSS</span>
-                        <span id="detail-fav" class="hidden"><i class="fa-solid fa-heart"></i> Любимый</span>
-                    </div>
-                    <div id="detail-genres" class="genres-list"></div>
-                    <div class="detail-actions owner-only hidden">
-                        <button id="btn-edit-title" class="btn-primary"><i class="fa-solid fa-pen"></i> Редактировать</button>
-                        <button id="btn-delete-title" class="btn-danger"><i class="fa-solid fa-trash"></i> Удалить</button>
-                    </div>
-                </div>
-            </div>
-            <div class="detail-entries">
-                <h4>История просмотра</h4>
-                <table class="entries-table">
-                    <thead>
-                        <tr>
-                            <th>Часть</th>
-                            <th>Серий</th>
-                            <th>Длительность</th>
-                            <th>Дата просмотра</th>
-                            <th>Время</th>
-                        </tr>
-                    </thead>
-                    <tbody id="detail-entries-body"></tbody>
-                    <tfoot>
-                        <tr>
-                            <td colspan="4" class="text-right"><strong>Итого по тайтлу:</strong></td>
-                            <td><strong id="detail-total-time">0 мин</strong></td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-        </div>
+    <div class="drawer-actions">
+      <!-- Кнопка добавления — видна только владельцу (app.js) -->
+      <button class="btn btn--accent" id="drawer-add" hidden>
+        <svg class="icon"><use href="#i-plus"/></svg>Добавить тайтл
+      </button>
     </div>
+    <p class="drawer-foot" id="drawer-foot"></p>
+  </aside>
 
-    <!-- Модальное окно: Добавление/Редактирование тайтла -->
-    <div id="modal-title-form" class="modal-overlay hidden">
-        <div class="modal-content glass-panel large scrollable">
-            <button class="modal-close"><i class="fa-solid fa-xmark"></i></button>
-            <h2 id="form-modal-title">Добавить тайтл</h2>
-            <form id="title-form">
-                <input type="hidden" id="form-id">
-                
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Название (рус.) *</label>
-                        <input type="text" id="form-title" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Оригинальное название</label>
-                        <input type="text" id="form-title-original">
-                    </div>
-                    <div class="form-group">
-                        <label>Тип *</label>
-                        <select id="form-type" required>
-                            <option value="TV-сериал">TV-сериал</option>
-                            <option value="Фильм">Фильм</option>
-                            <option value="OVA">OVA</option>
-                            <option value="ONA">ONA</option>
-                            <option value="Спешл">Спешл</option>
-                            <option value="TV-спешл">TV-спешл</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Тир *</label>
-                        <select id="form-tier" required>
-                            <option value="SSS">SSS (Шедевр)</option>
-                            <option value="S">S (Великолепно)</option>
-                            <option value="A">A (Отлично)</option>
-                            <option value="B">B (Хорошо)</option>
-                            <option value="C">C (Средне)</option>
-                            <option value="D">D (Слабо)</option>
-                            <option value="E">E (Плохо)</option>
-                        </select>
-                    </div>
-                    <div class="form-group full-width">
-                        <label>URL обложки</label>
-                        <input type="url" id="form-cover" placeholder="https://...">
-                    </div>
-                    <div class="form-group full-width">
-                        <label>Жанры</label>
-                        <div class="multi-select-container">
-                            <input type="text" id="form-genres-search" placeholder="Поиск жанров...">
-                            <div id="form-genres-dropdown" class="multi-select-dropdown hidden"></div>
-                            <div id="form-genres-selected" class="selected-tags"></div>
-                        </div>
-                    </div>
-                    <div class="form-group full-width">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="form-favorite">
-                            <i class="fa-solid fa-heart"></i> Любимый тайтл
-                        </label>
-                    </div>
-                </div>
-
-                <div class="form-section">
-                    <h4>Составные части (Сезоны, Фильмы, Спешлы)</h4>
-                    <div id="form-entries-container"></div>
-                    <button type="button" id="btn-add-entry" class="btn-secondary small"><i class="fa-solid fa-plus"></i> Добавить часть</button>
-                </div>
-
-                <div class="form-actions">
-                    <button type="button" class="btn-secondary modal-close-btn">Отмена</button>
-                    <button type="submit" class="btn-primary">Сохранить</button>
-                </div>
-            </form>
-        </div>
+  <!-- ================= МОДАЛКА: карточка тайтла ================= -->
+  <!-- ВАЖНО: .modal-backdrop сознательно НЕ имеет обработчика закрытия —
+       модалки закрываются только крестиком или клавишей Esc. -->
+  <div class="modal" id="modal-title" aria-hidden="true">
+    <div class="modal-backdrop"></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title-heading">
+      <button class="modal-close" id="modal-title-close" aria-label="Закрыть">
+        <svg class="icon"><use href="#i-x"/></svg>
+      </button>
+      <div class="modal-body" id="modal-title-body"><!-- Рендер app.js --></div>
     </div>
+  </div>
 
-    <!-- Модальное окно: GitHub Token -->
-    <div id="modal-github-auth" class="modal-overlay hidden">
-        <div class="modal-content glass-panel">
-            <button class="modal-close"><i class="fa-solid fa-xmark"></i></button>
-            <h2>Настройка сохранения на GitHub</h2>
-            <p>Для сохранения изменений в репозиторий требуется Personal Access Token с правами <code>repo</code>.</p>
-            <div class="form-group">
-                <label>GitHub Token</label>
-                <input type="password" id="github-token" placeholder="ghp_...">
-            </div>
-            <div class="form-group">
-                <label>Имя репозитория (owner/repo)</label>
-                <input type="text" id="github-repo" placeholder="username/anime-archive">
-            </div>
-            <div class="form-actions">
-                <button type="button" class="btn-secondary modal-close-btn">Отмена</button>
-                <button type="button" id="btn-save-github-config" class="btn-primary">Сохранить конфигурацию</button>
-            </div>
-            <p class="small-text">Токен хранится только в вашем браузере (localStorage).</p>
-        </div>
+  <!-- ================= МОДАЛКА: форма добавления/редактирования (владелец) ================= -->
+  <div class="modal" id="modal-form" aria-hidden="true">
+    <div class="modal-backdrop"></div>
+    <div class="modal-card modal-card--form" role="dialog" aria-modal="true" aria-labelledby="form-heading">
+      <button class="modal-close" id="modal-form-close" aria-label="Закрыть">
+        <svg class="icon"><use href="#i-x"/></svg>
+      </button>
+      <div class="modal-body" id="modal-form-body"><!-- Рендер app.js --></div>
     </div>
+  </div>
 
-    <!-- Контейнер для тостов (уведомлений) -->
-    <div id="toast-container"></div>
+  <!-- ================= ТОСТЫ-УВЕДОМЛЕНИЯ ================= -->
+  <div class="toasts" id="toasts" aria-live="polite"></div>
 
-    <!-- Datalist для жанров (заполняется JS) -->
-    <datalist id="genre-datalist"></datalist>
+  <!-- ================= SVG-СПРАЙТ ИКОНОК ================= -->
+  <!-- Собственный набор лаконичных линейных иконок (стиль пера 24×24) -->
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.2 16.2L21 21"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24"><path d="M22 4H2l7 8.5V20l6 2v-9.5L22 4z"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l8.8 8.6 8.8-8.6a5.5 5.5 0 0 0 0-7.8z"/></symbol>
+    <symbol id="i-crown" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M2.8 7.2l4.2 3.4L12 4.2l5 6.4 4.2-3.4L19.4 18H4.6L2.8 7.2z"/><path fill="currentColor" stroke="none" d="M4.6 19.4h14.8v1.7H4.6z"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"/></symbol>
+    <symbol id="i-rows" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="5" rx="1.5"/><rect x="3" y="10.5" width="18" height="4" rx="1.5"/><rect x="3" y="16" width="18" height="4" rx="1.5"/></symbol>
+    <symbol id="i-archive" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="5" rx="1.5"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9M10 13h4"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 20h18M6 20v-8M12 20V5M18 20v-12"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 8h9M19 8h1M4 16h1M11 16h9"/><circle cx="16" cy="8" r="2.5"/><circle cx="8" cy="16" r="2.5"/></symbol>
+    <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+    <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5M4 21h16"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/></symbol>
+    <symbol id="i-film" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 3v18M17 3v18M3 8h4M3 16h4M17 8h4M17 16h4"/></symbol>
+    <symbol id="i-tv" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="13" rx="2"/><path d="M8 3l4 4 4-4"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></symbol>
+    <symbol id="i-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3L21 2M15 8l3 3M18 5l3 3"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 12V5a2 2 0 0 1 2-2h7l9 9-9 9-9-9z"/><circle cx="7.5" cy="7.5" r="1.5"/></symbol>
+    <symbol id="i-drag" viewBox="0 0 24 24"><path style="stroke-width:3" d="M9 6h.01M9 12h.01M9 18h.01M15 6h.01M15 12h.01M15 18h.01"/></symbol>
+  </svg>
 
-    <!-- Скрипты -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
-    <script src="js/particles.js"></script>
-    <script src="js/stats.js"></script>
-    <script src="js/app.js"></script>
-    <script src="js/admin.js"></script>
+  <noscript>
+    <div class="noscript-msg">Для работы «Аниме-Бунко» необходим включённый JavaScript.</div>
+  </noscript>
+
+  <!-- ================= СКРИПТЫ ================= -->
+  <!-- Библиотеки через CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+  <!-- Порядок важен: сначала модули (частицы, статистика), затем ядро app.js,
+       затем admin.js — он активируется сам, только если открыт ?mode=owner -->
+  <script src="js/particles.js"></script>
+  <script src="js/stats.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/admin.js"></script>
 </body>
 </html>
