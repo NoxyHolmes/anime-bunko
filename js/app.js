@@ -1430,11 +1430,25 @@ function showToast(text, type = 'info', ms = 3400) {
    ============================================================ */
 function switchTab(name) {
   state.tab = name;
-  $$('.tab-panel').forEach(p => p.classList.toggle('is-active', p.id === 'tab-' + name));
+  // ФИКС: обязательно снимаем атрибут hidden — класс is-active не побеждает
+  // правило [hidden]{display:none!important}, и вкладки не открывались
+  $$('.tab-panel').forEach(p => {
+    const active = p.id === 'tab-' + name;
+    p.classList.toggle('is-active', active);
+    p.hidden = !active;
+  });
   $$('.tab-btn, .drawer-link').forEach(b => b.classList.toggle('is-active', b.dataset.tab === name));
   closeDrawer();
   if (name === 'stats' && window.ArchiveStats) ArchiveStats.render();
-  if (name === 'calendar') { renderCalendar(); renderCalList(); }
+  if (name === 'calendar') {
+    // Восстанавливаем сохранённый режим «Календарь / Список»
+    const mode = state.settings.calMode || 'grid';
+    $$('#cal-switch .segment-btn').forEach(b => b.classList.toggle('is-active', b.dataset.cal === mode));
+    $('#calendar-view').hidden = mode !== 'grid';
+    $('#calendar-list').hidden = mode !== 'list';
+    renderCalendar();
+    renderCalList();
+  }
   if (name === 'settings') renderSettings();
 }
 
