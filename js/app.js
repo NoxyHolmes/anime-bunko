@@ -1339,7 +1339,8 @@ function renderSettings() {
       </div>
     </div>`;
 
-  hydrateSettings();
+  function hydrateSettings() {
+  const root = $('#settings-body');
 }
 
 function hydrateSettings() {
