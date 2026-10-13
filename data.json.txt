@@ -1,0 +1,91 @@
+[
+  {
+    "id": "fma-brotherhood",
+    "title": "Стальной алхимик: Братство",
+    "titleOriginal": "Fullmetal Alchemist: Brotherhood",
+    "cover": "https://cdn.myanimelist.net/images/anime/1223/96541.jpg",
+    "type": "TV-сериал",
+    "genres": ["Экшен/Боевик", "Приключения", "Драма", "Фэнтези", "Магия", "Военное"],
+    "tier": "SSS",
+    "favorite": true,
+    "createdAt": "2023-01-15",
+    "entries": [
+      { "kind": "TV-сериал", "episodes": 64, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2023-01-15 – 2023-02-10" },
+      { "kind": "Фильм: Священная звезда Милоса", "episodes": 1, "minutesPerEpisode": null, "durationMinutes": 110, "watchDate": "2023-02-12" }
+    ]
+  },
+  {
+    "id": "steins-gate",
+    "title": "Врата Штейна",
+    "titleOriginal": "Steins;Gate",
+    "cover": "https://cdn.myanimelist.net/images/anime/5/73199.jpg",
+    "type": "TV-сериал",
+    "genres": ["Научная фантастика", "Триллер", "Психологическое", "Путешествия во времени"],
+    "tier": "S",
+    "favorite": true,
+    "createdAt": "2023-03-01",
+    "entries": [
+      { "kind": "TV-сериал", "episodes": 24, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2023-03-01 – 2023-03-20" },
+      { "kind": "Фильм: Замкнутая область", "episodes": 1, "minutesPerEpisode": null, "durationMinutes": 90, "watchDate": "2023-03-22" },
+      { "kind": "Спешл: Умный союз", "episodes": 1, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2023-03-23" }
+    ]
+  },
+  {
+    "id": "violet-evergarden",
+    "title": "Вайолет Эвергарден",
+    "titleOriginal": "Violet Evergarden",
+    "cover": "https://cdn.myanimelist.net/images/anime/1795/95088.jpg",
+    "type": "TV-сериал",
+    "genres": ["Драма", "Фэнтези", "Повседневность"],
+    "tier": "A",
+    "favorite": false,
+    "createdAt": "2023-05-10",
+    "entries": [
+      { "kind": "TV-сериал", "episodes": 13, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2023-05-10 – 2023-05-15" },
+      { "kind": "Фильм", "episodes": 1, "minutesPerEpisode": null, "durationMinutes": 140, "watchDate": "2023-05-20" }
+    ]
+  },
+  {
+    "id": "spy-family",
+    "title": "Семья шпиона",
+    "titleOriginal": "Spy x Family",
+    "cover": "https://cdn.myanimelist.net/images/anime/1441/122795.jpg",
+    "type": "TV-сериал",
+    "genres": ["Экшен/Боевик", "Комедия", "Повседневность", "Сверхъестественное"],
+    "tier": "B",
+    "favorite": false,
+    "createdAt": "2023-08-01",
+    "entries": [
+      { "kind": "Сезон 1", "episodes": 12, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2023-08-01 – 2023-08-10" },
+      { "kind": "Сезон 2", "episodes": 12, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2023-10-01 – 2023-10-10" }
+    ]
+  },
+  {
+    "id": "generic-isekai",
+    "title": "Перерождение в слабом мире",
+    "titleOriginal": "Weak World Isekai",
+    "cover": "https://cdn.myanimelist.net/images/anime/1000/100000.jpg",
+    "type": "TV-сериал",
+    "genres": ["Исекай", "Фэнтези", "Гарем"],
+    "tier": "C",
+    "favorite": false,
+    "createdAt": "2024-01-05",
+    "entries": [
+      { "kind": "TV-сериал", "episodes": 12, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2024-01-05 – 2024-01-06" }
+    ]
+  },
+  {
+    "id": "bad-anime",
+    "title": "Абсолютный провал",
+    "titleOriginal": "Total Failure",
+    "cover": "https://cdn.myanimelist.net/images/anime/1111/111111.jpg",
+    "type": "TV-сериал",
+    "genres": ["Экшен/Боевик", "Меха"],
+    "tier": "E",
+    "favorite": false,
+    "createdAt": "2024-02-14",
+    "entries": [
+      { "kind": "TV-сериал", "episodes": 12, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2024-02-14" }
+    ]
+  }
+]
