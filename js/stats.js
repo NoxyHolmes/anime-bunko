@@ -1,36 +1,55 @@
 /* ============================================================
-   АНИМЕ-АРХИВ — stats.js
+   АНИМЕ-БУНКО — stats.js (финальная версия)
    Вкладка «Статистика»: сводные числа и три диаграммы Chart.js.
-   API: ArchiveStats.render() — вызывается из app.js при входе
-   на вкладку; подписка на 'data-changed' / 'settings-changed'
-   обновляет графики на лету (цвета тем, пересчёт длительностей).
+   Цвета тиров синхронизированы с новой палитрой styles.css.
    ============================================================ */
 (function () {
   'use strict';
 
-  // Цвета тиров — синхронизированы с CSS (data-tier переменные)
   const TIER_HEX = {
-    SSS: '#ffcf3f', S: '#ff8b24', A: '#ff3d55', B: '#22dd9a',
-    C: '#35aaff', D: '#a86bff', E: '#ff4fa8',
+    SSS: '#f2c14e', S: '#ff9130', A: '#ff4d5e', B: '#2fd398',
+    C: '#3fa9ff', D: '#a476ff', E: '#ff4d9d',
   };
   const MONTHS_SHORT = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
 
-  const charts = {};   // живые экземпляры Chart.js
+  const charts = {};
 
-  /* ---------- Текущие цвета темы (читаем из CSS-переменных) ---------- */
   function palette() {
     const cs = getComputedStyle(document.documentElement);
     const v = name => cs.getPropertyValue(name).trim();
     return {
       accent: v('--accent') || '#ff4d6d',
-      text: v('--text') || '#f3f2f8',
-      text2: v('--text-2') || '#b8b6c6',
-      text3: v('--text-3') || '#807d92',
-      border: v('--border') || 'rgba(255,255,255,.09)',
+      text: v('--text') || '#efeaf4',
+      text2: v('--text-2') || '#a79dbb',
+      text3: v('--text-3') || '#6f6780',
+      border: v('--border') || 'rgba(255,255,255,.075)',
     };
   }
 
   const isActive = () => document.getElementById('tab-stats')?.classList.contains('is-active');
+
+  /* ---------- Заглушки «нет данных» (canvas не удаляем — чинится повторный рендер) ---------- */
+  function showChartEmpty(card, msg) {
+    const box = card.querySelector('.chart-box');
+    if (!box) return;
+    let note = box.querySelector('.chart-empty');
+    if (!note) {
+      note = document.createElement('p');
+      note.className = 'chart-empty';
+      note.style.cssText = 'padding:60px 0;text-align:center;color:var(--text-3);font-size:13px;margin:0;';
+      box.appendChild(note);
+    }
+    note.textContent = msg;
+    const cv = box.querySelector('canvas');
+    if (cv) cv.style.display = 'none';
+  }
+  function hideChartEmpty(card) {
+    const box = card.querySelector('.chart-box');
+    const note = box?.querySelector('.chart-empty');
+    if (note) note.remove();
+    const cv = box?.querySelector('canvas');
+    if (cv) cv.style.display = '';
+  }
 
   /* ============================================================
      РЕНДЕР ВСЕЙ ВКЛАДКИ
@@ -55,7 +74,7 @@
   /* ---------- Сводные числа ---------- */
   function renderHero(titles, App) {
     const serials = titles.filter(t => t.type === 'TV-сериал').length;
-    // Фильмы считаем по частям: и отдельные тайтлы-фильмы, и фильмы внутри сериалов
+    // Фильмы — по частям: и отдельные тайтлы, и фильмы внутри сериалов
     const movieParts = titles.reduce((n, t) =>
       n + (t.entries || []).filter(e => e.kind === 'Фильм').length, 0);
     const episodes = titles.reduce((n, t) => n + App.totalEpisodes(t), 0);
@@ -79,38 +98,31 @@
       </div>`).join('');
   }
 
-  /* ---------- Диаграмма жанров (горизонтальные бары, %) ---------- */
+  /* ---------- Жанры: горизонтальные бары с процентами ---------- */
   function renderGenresChart(titles, pal) {
     const el = document.getElementById('chart-genres');
     if (!el) return;
     destroy('genres');
+    const card = el.closest('.stat-card');
 
-    // Сколько тайтлов относится к каждому жанру
     const counts = new Map();
     titles.forEach(t => (t.genres || []).forEach(g => counts.set(g, (counts.get(g) || 0) + 1)));
-
     const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
     const total = titles.length || 1;
-    const parent = el.parentElement;
 
-    if (!top.length) {
-      parent.querySelector('.chart-box').innerHTML =
-        '<p class="empty-note" style="padding:60px 0;text-align:center;">Нет данных о жанрах</p>';
-      return;
-    }
-    restoreBox(parent, 'chart-genres');
+    if (!top.length) { showChartEmpty(card, 'Нет данных о жанрах'); return; }
+    hideChartEmpty(card);
 
     charts.genres = new Chart(el, {
       type: 'bar',
       data: {
         labels: top.map(([g]) => g),
         datasets: [{
-          data: top.map(([, n]) => +(n / total * 100).toFixed(1)),   // проценты
+          data: top.map(([, n]) => +(n / total * 100).toFixed(1)),
           backgroundColor: pal.accent,
           hoverBackgroundColor: pal.text,
-          borderRadius: 7,
-          barThickness: 'flex',
-          maxBarThickness: 22,
+          borderRadius: 6,
+          maxBarThickness: 20,
         }],
       },
       options: {
@@ -123,7 +135,7 @@
           tooltip: {
             callbacks: {
               label: ctx => {
-                const [g, n] = top[ctx.dataIndex];
+                const [, n] = top[ctx.dataIndex];
                 return `${n} тайтл(ов) · ${ctx.parsed.x}%`;
               },
             },
@@ -142,26 +154,25 @@
     });
   }
 
-  /* ---------- Распределение по тирам (donut) ---------- */
-  // Плагин: общее число тайтлов в центре «пончика»
+  /* ---------- Тиры: donut с числом в центре ---------- */
   const centerTextPlugin = {
     id: 'centerText',
     afterDraw(chart) {
       if (chart.config.type !== 'doughnut') return;
-      const { ctx } = chart;
       const meta = chart.getDatasetMeta(0);
       if (!meta.data.length) return;
       const { x, y } = meta.data[0];
       const pal = palette();
       const total = chart.$total ?? '';
+      const ctx = chart.ctx;
       ctx.save();
       ctx.textAlign = 'center';
       ctx.fillStyle = pal.text;
-      ctx.font = "800 30px 'Unbounded', sans-serif";
+      ctx.font = "800 28px 'Unbounded', sans-serif";
       ctx.fillText(total, x, y + 2);
       ctx.fillStyle = pal.text3;
-      ctx.font = "700 11px 'Manrope', sans-serif";
-      ctx.fillText('ТАЙТЛОВ', x, y + 22);
+      ctx.font = "700 10px 'Manrope', sans-serif";
+      ctx.fillText('ТАЙТЛОВ', x, y + 21);
       ctx.restore();
     },
   };
@@ -170,17 +181,13 @@
     const el = document.getElementById('chart-tiers');
     if (!el) return;
     destroy('tiers');
+    const card = el.closest('.stat-card');
 
     const counts = window.App.TIER_KEYS.map(k => titles.filter(t => t.tier === k).length);
     const total = titles.length;
-    const parent = el.parentElement;
 
-    if (!total) {
-      parent.querySelector('.chart-box').innerHTML =
-        '<p class="empty-note" style="padding:60px 0;text-align:center;">Каталог пуст</p>';
-      return;
-    }
-    restoreBox(parent, 'chart-tiers');
+    if (!total) { showChartEmpty(card, 'Каталог пуст'); return; }
+    hideChartEmpty(card);
 
     charts.tiers = new Chart(el, {
       type: 'doughnut',
@@ -198,11 +205,7 @@
         responsive: true,
         maintainAspectRatio: false,
         cutout: '64%',
-        animation: {
-          duration: 800,
-          easing: 'easeOutQuart',
-          animateRotate: true,
-        },
+        animation: { duration: 800, easing: 'easeOutQuart', animateRotate: true },
         plugins: {
           legend: {
             position: 'bottom',
@@ -215,10 +218,10 @@
               generateLabels: chart => {
                 const data = chart.data.datasets[0].data;
                 const sum = data.reduce((a, b) => a + b, 0) || 1;
-                return chart.data.labels.map((lbl, i) => ({
-                  text: `${lbl} · ${Math.round(data[i] / sum * 100)}%`,
+                return chart.data.labels.map(lbl => ({
+                  text: `${lbl} · ${Math.round(data[chart.data.labels.indexOf(lbl)] / sum * 100)}%`,
                   fillStyle: TIER_HEX[lbl],
-                  index: i,
+                  index: chart.data.labels.indexOf(lbl),
                   fontColor: pal.text,
                 }));
               },
@@ -226,10 +229,7 @@
           },
           tooltip: {
             callbacks: {
-              label: ctx => {
-                const pct = Math.round(ctx.parsed / total * 100);
-                return ` ${ctx.parsed} тайтл(ов) · ${pct}%`;
-              },
+              label: ctx => ` ${ctx.parsed} тайтл(ов) · ${Math.round(ctx.parsed / total * 100)}%`,
             },
           },
         },
@@ -239,13 +239,13 @@
     charts.tiers.$total = total;
   }
 
-  /* ---------- Динамика просмотра по месяцам (линия) ---------- */
+  /* ---------- Динамика по месяцам (линия) ---------- */
   function renderMonthsChart(titles, pal, App) {
     const el = document.getElementById('chart-months');
     if (!el) return;
     destroy('months');
 
-    // Сумма минут по месяцу НАЧАЛА просмотра каждой части
+    // Минуты по месяцу НАЧАЛА просмотра каждой части
     const byMonth = new Map();
     titles.forEach(t => (t.entries || []).forEach(e => {
       const pd = App.parseWatchDate(e.watchDate);
@@ -254,7 +254,6 @@
       byMonth.set(key, (byMonth.get(key) || 0) + App.entryMinutes(e, App.settings, t.type));
     }));
 
-    // Диапазон: от первого события до текущего месяца (максимум 36 месяцев)
     const now = new Date();
     let end = new Date(now.getFullYear(), now.getMonth(), 1);
     let start = new Date(end);
@@ -277,7 +276,6 @@
     if (note) note.textContent = data.some(v => v > 0)
       ? `от ${labels[0]} до ${labels[labels.length - 1]}` : 'нет данных';
 
-    // Мягкий градиент под линией
     const ctx2d = el.getContext('2d');
     const grad = ctx2d.createLinearGradient(0, 0, 0, 280);
     grad.addColorStop(0, pal.accent + '55');
@@ -322,29 +320,14 @@
     });
   }
 
-  /* ---------- Вспомогательные ---------- */
   function destroy(name) {
     if (charts[name]) { charts[name].destroy(); delete charts[name]; }
   }
 
-  // Если ранее показывали заглушку «нет данных» — вернуть canvas на место
-  function restoreBox(parent, canvasId) {
-    const box = parent.querySelector('.chart-box');
-    if (!box) return;
-    const oldCanvas = document.getElementById(canvasId);
-    if (!oldCanvas) {
-      const c = document.createElement('canvas');
-      c.id = canvasId;
-      box.innerHTML = '';
-      box.appendChild(c);
-    }
-  }
-
-  /* ---------- Подписка на изменения данных и настроек ---------- */
+  /* ---------- Подписки ---------- */
   document.addEventListener('DOMContentLoaded', () => {
     if (!window.App) return;
     window.App.on('data-changed', () => { if (isActive()) render(); });
-    // Смена темы/акцента — пересобираем графики с новыми цветами
     window.App.on('settings-changed', () => { if (isActive()) render(); });
   });
 
