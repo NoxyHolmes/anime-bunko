@@ -1,18 +1,13 @@
 /* ============================================================
-   АНИМЕ-АРХИВ — app.js
-   Ядро приложения: данные, настройки, рендер архива, drag&drop,
-   поиск/фильтры, модалки, форма тайтла, календарь, настройки.
-   Модули particles.js и stats.js загружены ДО этого файла
-   и вызываются через window.ArchiveParticles / window.ArchiveStats.
-   Админ-функции (admin.js) подписываются на события через App.on().
+   АНИМЕ-БУНКО — app.js (финальная версия, все исправления внутри)
+   Ядро: данные, настройки, рендер архива, drag&drop, поиск,
+   фильтры, модалки, форма тайтла, календарь, панель настроек.
    ============================================================ */
 'use strict';
 
 /* ============================================================
    0. КОНСТАНТЫ
    ============================================================ */
-
-// Тиры: сверху вниз по убыванию
 const TIERS = [
   { key: 'SSS', name: 'Шедевр',      hint: 'Высшие творения' },
   { key: 'S',   name: 'Великолепно', hint: 'Очень сильно' },
@@ -24,16 +19,14 @@ const TIERS = [
 ];
 const TIER_KEYS = TIERS.map(t => t.key);
 
-// Типы тайтлов
 const TYPES = ['TV-сериал', 'Фильм', 'OVA', 'ONA', 'Спешл', 'TV-спешл'];
 
-// Виды составных частей
 const ENTRY_KINDS = [
   'Сезон 1', 'Сезон 2', 'Сезон 3', 'Сезон 4', 'Сезон 5', 'Сезон 6',
   'Сезон 7', 'Сезон 8', 'Фильм', 'Спешл', 'TV-спешл', 'OVA', 'ONA',
 ];
 
-// Полный список жанров (сортируем по алфавиту средствами локали)
+// Полный список жанров, отсортированный по алфавиту
 const GENRES = [
   'Экшен/Боевик', 'Приключения', 'Комедия', 'Гэг-юмор', 'Пародия', 'Драма',
   'Фэнтези', 'Тёмное фэнтези', 'Ужасы', 'Мистика', 'Триллер', 'Саспенс',
@@ -53,67 +46,73 @@ const GENRES = [
 
 // Пресеты фоновой анимации (ключи согласованы с particles.js)
 const PRESETS = [
-  { key: 'none',          name: 'Выключено',       color: '#807d92' },
-  { key: 'sakura',        name: 'Сакура',          color: '#ff9ec6' },
-  { key: 'sakura-white',  name: 'Белая сакура',    color: '#f3eefb' },
-  { key: 'roses-red',     name: 'Красные розы',    color: '#e0244a' },
-  { key: 'petals-white',  name: 'Белые лепестки',  color: '#efe7f2' },
-  { key: 'petals-yellow', name: 'Жёлтые лепестки', color: '#ffd44d' },
-  { key: 'snow',          name: 'Снег',            color: '#eaf6ff' },
-  { key: 'rain',          name: 'Ливень',          color: '#7fb2ff' },
-  { key: 'drizzle',       name: 'Морось',          color: '#a9c8ff' },
-  { key: 'leaves',        name: 'Осенние листья',  color: '#e8823a' },
-  { key: 'fireflies',     name: 'Светлячки',       color: '#ffe97a' },
-  { key: 'stars-fall',    name: 'Падающие звёзды', color: '#fff3c9' },
-  { key: 'stardust',      name: 'Звёздная пыль',   color: '#cdb4ff' },
-  { key: 'bubbles',       name: 'Пузырьки',        color: '#9adcff' },
-  { key: 'confetti',      name: 'Конфетти',        color: '#ff7ab8' },
-  { key: 'feathers',      name: 'Пёрышки',         color: '#f0e8da' },
-  { key: 'hearts',        name: 'Сердечки',        color: '#ff5d7d' },
-  { key: 'butterflies',   name: 'Бабочки',         color: '#7ee3c9' },
-  { key: 'clover',        name: 'Зелёный клевер',  color: '#4ade80' },
+  { key: 'none',          name: 'Выключено',        color: '#807d92' },
+  { key: 'sakura',        name: 'Сакура',           color: '#ff9ec6' },
+  { key: 'sakura-white',  name: 'Белая сакура',     color: '#f3eefb' },
+  { key: 'roses-red',     name: 'Красные розы',     color: '#e0244a' },
+  { key: 'petals-white',  name: 'Белые лепестки',   color: '#efe7f2' },
+  { key: 'petals-yellow', name: 'Жёлтые лепестки',  color: '#ffd44d' },
+  { key: 'snow',          name: 'Снег',             color: '#eaf6ff' },
+  { key: 'rain',          name: 'Ливень',           color: '#7fb2ff' },
+  { key: 'drizzle',       name: 'Морось',           color: '#a9c8ff' },
+  { key: 'leaves',        name: 'Осенние листья',   color: '#e8823a' },
+  { key: 'fireflies',     name: 'Светлячки',        color: '#ffe97a' },
+  { key: 'stars-fall',    name: 'Падающие звёзды',  color: '#fff3c9' },
+  { key: 'stardust',      name: 'Звёздная пыль',    color: '#cdb4ff' },
+  { key: 'bubbles',       name: 'Пузырьки',         color: '#9adcff' },
+  { key: 'confetti',      name: 'Конфетти',         color: '#ff7ab8' },
+  { key: 'feathers',      name: 'Пёрышки',          color: '#f0e8da' },
+  { key: 'hearts',        name: 'Сердечки',         color: '#ff5d7d' },
+  { key: 'butterflies',   name: 'Бабочки',          color: '#7ee3c9' },
+  { key: 'clover',        name: 'Зелёный клевер',   color: '#4ade80' },
   { key: 'sparks',        name: 'Искры фейерверка', color: '#ffb84d' },
-  { key: 'petals-night',  name: 'Ночные лепестки', color: '#6f8fff' },
+  { key: 'petals-night',  name: 'Ночные лепестки',  color: '#6f8fff' },
 ];
 
-// Ключи localStorage
 const LS_DATA = 'animeArchive.data';
 const LS_SET  = 'animeArchive.settings';
 
-// Настройки по умолчанию
 const DEFAULT_SETTINGS = {
-  theme: 'dark',            // 'dark' | 'light'
-  accent: '#ff4d6d',        // акцентный цвет сайта
-  animations: true,         // все анимации вкл/выкл
-  viewMode: 'grid',         // grid | list | compact
-  cardSize: 1,              // множитель размера карточек
-  columns: 'auto',          // 'auto' | 6..10 — колонки на десктопе
-  avgEpisode: 24,           // средняя длительность серии, мин
-  avgMovie: 110,            // средняя длительность фильма, мин
-  calMode: 'grid',          // календарь | список
+  theme: 'dark',
+  accent: '#ff4d6d',
+  animations: true,
+  viewMode: 'grid',
+  cardSize: 1,
+  columns: 'auto',
+  avgEpisode: 24,
+  avgMovie: 110,
+  calMode: 'grid',
   particles: { preset: 'sakura', density: 40, speed: 1, size: 1 },
 };
 
-// Русские названия месяцев
 const MONTHS_NOM = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
 const MONTHS_GEN = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+const TITLE_FORMS = ['тайтл', 'тайтла', 'тайтлов'];
 
 /* ============================================================
-   1. МИНИ-ХЕЛПЕРЫ
+   1. ХЕЛПЕРЫ
    ============================================================ */
 const $  = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
-// Экранирование HTML — защита от injection через пользовательские строки
+// Экранирование HTML-строк
 const esc = s => String(s ?? '').replace(/[&<>"']/g,
   c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-// Уникальный id тайтла
 const uid = () => (crypto.randomUUID
   ? crypto.randomUUID()
   : 'id-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9));
 
-// Глубокое слияние настроек с дефолтами
+// Русская плюрализация: plural(2, ['тайтл','тайтла','тайтлов'])
+function plural(n, forms) {
+  n = Math.abs(n) % 100;
+  const d = n % 10;
+  if (n > 10 && n < 20) return forms[2];
+  if (d > 1 && d < 5) return forms[1];
+  if (d === 1) return forms[0];
+  return forms[2];
+}
+
 function deepMerge(base, extra) {
   const out = { ...base };
   for (const k in extra) {
@@ -124,14 +123,14 @@ function deepMerge(base, extra) {
   return out;
 }
 
-// Локальная дата без сдвига таймзоны: 'YYYY-MM-DD' -> Date
+// 'YYYY-MM-DD' -> локальная дата без сдвига таймзоны
 function parseISODate(s) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || '').trim());
   return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
 }
 
 // Разбор даты просмотра: одиночная дата или период «дата – дата».
-// Событием считается ДАТА НАЧАЛА просмотра (для календаря и динамики).
+// Событие привязывается к дате НАЧАЛА просмотра.
 function parseWatchDate(v) {
   if (!v) return null;
   const parts = String(v).split(/[–—]/).map(s => s.trim()).filter(Boolean);
@@ -143,8 +142,8 @@ function parseWatchDate(v) {
 
 const isoDate = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const monthKey = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+const fmtDateRu = d => `${d.getDate()} ${MONTHS_GEN[d.getMonth()]}`;
 
-// Форматирование минут: «12 ч 34 мин»
 function fmtMin(min) {
   min = Math.round(Number(min) || 0);
   if (min <= 0) return '0 мин';
@@ -154,28 +153,19 @@ function fmtMin(min) {
   return `${h} ч ${m} мин`;
 }
 
-const fmtDateRu = d => `${d.getDate()} ${MONTHS_GEN[d.getMonth()]}`;
-
-/* ---------- Вычисление времени просмотра ---------- */
-
-// Минуты одной составной части
+/* ---------- Вычисление времени ---------- */
 function entryMinutes(entry, settings, titleType) {
   const e = entry || {};
   if (e.durationMinutes != null) return Number(e.durationMinutes) || 0;
   const eps = Number(e.episodes) || 0;
   if (eps > 0) return eps * (e.minutesPerEpisode ?? settings.avgEpisode);
-  // Нет ни серий, ни длительности: если это фильм — берём среднюю по фильму
   if (e.kind === 'Фильм' || titleType === 'Фильм') return settings.avgMovie;
   return 0;
 }
-
-// Суммарное время тайтла
 const titleMinutes = (t, s) => (t.entries || []).reduce((sum, e) => sum + entryMinutes(e, s, t.type), 0);
-
-// Суммарное количество серий тайтла
 const totalEpisodes = t => (t.entries || []).reduce((n, e) => n + (Number(e.episodes) || 0), 0);
 
-/* ---------- Цветовые утилиты (для акцента) ---------- */
+/* ---------- Цветовые утилиты ---------- */
 function hexToRgb(hex) {
   const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return m ? { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) } : { r: 255, g: 77, b: 109 };
@@ -188,7 +178,7 @@ function lighten(hex, amt) {
 }
 
 /* ============================================================
-   2. СОСТОЯНИЕ ПРИЛОЖЕНИЯ
+   2. СОСТОЯНИЕ
    ============================================================ */
 const state = {
   titles: [],
@@ -196,13 +186,13 @@ const state = {
   filters: { tiers: new Set(), types: new Set(), genres: new Set(), favOnly: false },
   search: '',
   tab: 'archive',
-  calDate: new Date(),          // отображаемый месяц календаря
-  events: new Map(),            // 'YYYY-MM-DD' -> [{ title, entry }]
-  form: null,                   // состояние открытой формы
-  popCell: null,                // ячейка календаря с открытым поповером
+  calDate: new Date(),
+  events: new Map(),
+  form: null,
+  popCell: null,
 };
 
-// Режим владельца: admin.html (data-owner="1") или index.html?mode=owner
+// Режим владельца: admin.html (редирект) или index.html?mode=owner
 const isOwner = document.body.dataset.owner === '1'
   || new URLSearchParams(location.search).get('mode') === 'owner';
 
@@ -214,13 +204,6 @@ function emit(evt, data) { (bus[evt] || []).forEach(fn => { try { fn(data); } ca
 /* ============================================================
    3. ЗАГРУЗКА И СОХРАНЕНИЕ ДАННЫХ
    ============================================================ */
-
-// Загрузка каталога.
-// Логика:
-//  • Владелец: приоритет у localStorage — там лежит рабочая копия
-//    (автосохранение), возможно более свежая, чем data.json на GitHub.
-//  • Публичный режим: сначала data.json (свежее с сервера),
-//    при неудаче (например, открытие с file://) — localStorage.
 async function loadTitles() {
   const local = readLocalTitles();
   if (isOwner && local) { state.titles = local; return; }
@@ -244,7 +227,6 @@ function readLocalTitles() {
   } catch { return null; }
 }
 
-// Немедленная запись в localStorage
 function saveToLocal() {
   try {
     localStorage.setItem(LS_DATA, JSON.stringify({
@@ -257,15 +239,13 @@ function saveToLocal() {
   }
 }
 
-// Автосохранение с debounce 500 мс (только владелец — публичный режим каталог не меняет)
 let autosaveTimer = null;
 function scheduleAutosave() {
-  if (!isOwner) return;
+  if (!isOwner) return;                       // публичный режим каталог не меняет
   clearTimeout(autosaveTimer);
   autosaveTimer = setTimeout(saveToLocal, 500);
 }
 
-// Принудительно взять свежий data.json с сервера (кнопка в админке)
 async function forceRemoteLoad() {
   const res = await fetch('data.json', { cache: 'no-store' });
   if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -280,7 +260,7 @@ function loadSettings() {
   try {
     const raw = localStorage.getItem(LS_SET);
     if (raw) state.settings = deepMerge(DEFAULT_SETTINGS, JSON.parse(raw));
-  } catch { /* повреждённые настройки — используем дефолт */ }
+  } catch { /* повреждены — используем дефолт */ }
 }
 
 function persistSettings() {
@@ -288,37 +268,29 @@ function persistSettings() {
 }
 
 /* ============================================================
-   4. ПРИМЕНЕНИЕ НАСТРОЕК (мгновенно, без перезагрузки)
+   4. ПРИМЕНЕНИЕ НАСТРОЕК (мгновенно)
    ============================================================ */
 function applySettings() {
   const s = state.settings;
   const root = document.documentElement;
 
-  // Тема
   root.dataset.theme = s.theme;
-
-  // Глобальное отключение анимаций
   root.classList.toggle('no-anim', !s.animations);
 
-  // Акцентный цвет и его производные
   root.style.setProperty('--accent', s.accent);
   root.style.setProperty('--accent-2', lighten(s.accent, 0.16));
-  root.style.setProperty('--accent-soft', rgba(s.accent, 0.15));
+  root.style.setProperty('--accent-soft', rgba(s.accent, 0.13));
 
-  // Параметры сетки карточек (наследуются всеми .cards)
   const sections = $('#tier-sections');
   if (sections) {
     sections.style.setProperty('--card-target', Math.round(150 * (s.cardSize || 1)) + 'px');
     sections.style.setProperty('--cols-fix', String(s.columns));
   }
 
-  // Фоновые частицы
   if (window.ArchiveParticles) ArchiveParticles.apply(s);
-
   emit('settings-changed', s);
 }
 
-// Изменить настройку: сохранить + применить + оповестить
 function setSetting(key, value) {
   state.settings[key] = value;
   persistSettings();
@@ -347,9 +319,8 @@ const hasActiveFilters = () =>
   state.filters.tiers.size || state.filters.types.size || state.filters.genres.size || state.filters.favOnly;
 
 /* ============================================================
-   6. РЕНДЕР: ОБЛОЖКИ
+   6. ОБЛОЖКИ
    ============================================================ */
-// HTML обложки: картинка или заглушка с первой буквой названия
 function coverHTML(t, size) {
   const cls = size === 'lg' ? 'cover-fallback cover-fallback--lg' : 'cover-fallback cover-fallback--sm';
   if (!t.cover) {
@@ -358,31 +329,25 @@ function coverHTML(t, size) {
   return `<img class="cover-img" src="${esc(t.cover)}" alt="" loading="lazy" draggable="false">`;
 }
 
-// После каждого innerHTML: плавное появление картинок + заглушка при ошибке загрузки
+// Плавное появление картинок + заглушка при ошибке загрузки
 function hydrateImages(root) {
   $$('img.cover-img', root).forEach(img => {
     img.addEventListener('load', () => img.classList.add('is-loaded'), { once: true });
     img.addEventListener('error', () => {
+      const holder = img.closest('.title-card, .recent-card, .tm-cover');
+      const isBig = !!img.closest('.tm-cover');
       const fb = document.createElement('div');
-      fb.className = 'cover-fallback';
-      fb.dataset.tier = img.closest('[data-tier]')?.dataset.tier || 'S';
-      fb.textContent = '?';
-      const card = img.closest('.title-card, .recent-card, .tm-cover');
-      if (card) {
-        const name = card.dataset.name || '';
-        fb.textContent = name.trim()[0] || '?';
-      }
-      if (fb.classList && img.parentElement) {
-        fb.classList.add(img.closest('.tm-cover') ? 'cover-fallback--lg' : 'cover-fallback--sm');
-        img.replaceWith(fb);
-      }
+      fb.className = 'cover-fallback' + (isBig ? ' cover-fallback--lg' : ' cover-fallback--sm');
+      fb.dataset.tier = holder?.dataset.tier || 'S';
+      fb.textContent = (holder?.dataset.name || '?').trim()[0] || '?';
+      img.replaceWith(fb);
     }, { once: true });
     if (img.complete && img.naturalWidth > 0) img.classList.add('is-loaded');
   });
 }
 
 /* ============================================================
-   7. РЕНДЕР: ЛЕНТА «ПОСЛЕДНИЕ ДОБАВЛЕННЫЕ»
+   7. ЛЕНТА «ПОСЛЕДНИЕ ДОБАВЛЕННЫЕ»
    ============================================================ */
 function renderRecentStrip() {
   const strip = $('#recent-strip');
@@ -390,8 +355,7 @@ function renderRecentStrip() {
     .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
     .slice(0, 10);
 
-  $('#recent-count').textContent = recent.length
-    ? `${recent.length} из ${state.titles.length}` : '';
+  $('#recent-count').textContent = recent.length ? `${recent.length} из ${state.titles.length}` : '';
 
   strip.innerHTML = recent.map(t => `
     <div class="recent-card" data-id="${esc(t.id)}" data-tier="${esc(t.tier)}" data-name="${esc(t.title)}" title="${esc(t.title)}">
@@ -403,18 +367,17 @@ function renderRecentStrip() {
 }
 
 /* ============================================================
-   8. РЕНДЕР: ПАНЕЛЬ ТИРОВ (количество + проценты)
+   8. ПАНЕЛЬ ТИРОВ
    ============================================================ */
 function renderTierBar() {
   const total = state.titles.length;
-  const bar = $('#tier-bar');
-  bar.innerHTML = TIERS.map(({ key, name }, i) => {
+  $('#tier-bar').innerHTML = TIERS.map(({ key, name }, i) => {
     const count = state.titles.filter(t => t.tier === key).length;
     const pct = total ? Math.round(count / total * 100) : 0;
     const on = state.filters.tiers.has(key) ? ' is-on' : '';
     return `
       <button class="tier-chip${on}" data-tier="${key}" data-tier-filter="${key}"
-              title="${esc(name)} — фильтр" aria-label="Тир ${key}: ${count} тайтлов, ${pct}%">
+              title="${esc(name)} — фильтр" aria-label="Тир ${key}: ${count}, ${pct}%">
         <span class="tier-letter" data-tier="${key}" style="--letter-delay:${(-i * 0.9).toFixed(1)}s">${key}</span>
         <span class="tier-chip__stats">
           <span class="tier-chip__count">${count}</span>
@@ -425,29 +388,25 @@ function renderTierBar() {
 }
 
 /* ============================================================
-   9. РЕНДЕР: КАРТОЧКИ ТАЙТЛОВ (3 вида)
+   9. КАРТОЧКИ (3 вида)
    ============================================================ */
 function titleCardHTML(t, view) {
   const s = state.settings;
   const min = titleMinutes(t, s);
   const eps = totalEpisodes(t);
   const timeIcon = '<svg class="icon"><use href="#i-clock"/></svg>';
-  const meta = eps
-    ? `${esc(t.type)} · ${eps} эп.`
-    : esc(t.type);
-
-  // Значки на обложке: корона SSS, сердечко любимого
+  const meta = eps ? `${esc(t.type)} · ${eps} эп.` : esc(t.type);
   const badges = `
     <div class="title-card__badges">
       ${t.tier === 'SSS' ? '<span class="badge badge--crown" title="Шедевр"><svg class="icon"><use href="#i-crown"/></svg></span>' : ''}
       ${t.favorite ? '<span class="badge badge--heart" title="Любимый тайтл"><svg class="icon"><use href="#i-heart"/></svg></span>' : ''}
     </div>`;
-
   const time = `<span class="title-card__time">${timeIcon}${fmtMin(min)}</span>`;
+  const attrs = `data-id="${esc(t.id)}" data-tier="${esc(t.tier)}" data-name="${esc(t.title)}"`;
 
   if (view === 'compact') {
     return `
-      <article class="title-card title-card--compact" data-id="${esc(t.id)}" data-tier="${esc(t.tier)}" data-name="${esc(t.title)}">
+      <article class="title-card title-card--compact" ${attrs}>
         <div class="title-card__cover">${coverHTML(t, 'sm')}</div>
         <div class="title-card__body">
           <h4 class="title-card__title">${esc(t.title)}</h4>
@@ -456,10 +415,9 @@ function titleCardHTML(t, view) {
         </div>
       </article>`;
   }
-
   if (view === 'list') {
     return `
-      <article class="title-card title-card--list" data-id="${esc(t.id)}" data-tier="${esc(t.tier)}" data-name="${esc(t.title)}">
+      <article class="title-card title-card--list" ${attrs}>
         <div class="title-card__cover">${coverHTML(t, 'sm')}${badges}</div>
         <div class="title-card__body">
           <h4 class="title-card__title">${esc(t.title)}</h4>
@@ -468,10 +426,8 @@ function titleCardHTML(t, view) {
         </div>
       </article>`;
   }
-
-  // Вид «сетка» (по умолчанию)
   return `
-    <article class="title-card" data-id="${esc(t.id)}" data-tier="${esc(t.tier)}" data-name="${esc(t.title)}">
+    <article class="title-card" ${attrs}>
       <div class="title-card__cover">${coverHTML(t, 'sm')}${badges}</div>
       <div class="title-card__body">
         <h4 class="title-card__title">${esc(t.title)}</h4>
@@ -482,35 +438,30 @@ function titleCardHTML(t, view) {
 }
 
 /* ============================================================
-   10. РЕНДЕР: СЕКЦИИ ТИРОВ + DRAG & DROP
+   10. СЕКЦИИ ТИРОВ + DRAG & DROP
    ============================================================ */
 function renderTierSections() {
   const s = state.settings;
   const wrap = $('#tier-sections');
   const list = visibleTitles();
   const anyFilter = hasActiveFilters() || !!state.search;
-
-  // Параметры сетки
-  wrap.style.setProperty('--card-target', Math.round(150 * (s.cardSize || 1)) + 'px');
-  wrap.style.setProperty('--cols-fix', String(s.columns));
+  const target = Math.round(150 * (s.cardSize || 1));
 
   wrap.innerHTML = TIERS.map(({ key, name, hint }, i) => {
-    // При фильтре по тирам показываем только выбранные секции
     if (state.filters.tiers.size && !state.filters.tiers.has(key)) return '';
 
     const items = list.filter(t => t.tier === key);
     const totalMin = items.reduce((sum, t) => sum + titleMinutes(t, s), 0);
+    const cols = s.columns !== 'auto'
+      ? `repeat(${s.columns}, minmax(0,1fr))`
+      : `repeat(auto-fill, minmax(${target}px, 1fr))`;
 
     const cards = items.length
-      ? `<div class="cards${s.columns !== 'auto' ? ' cards--fixed' : ''}"
-             data-tier="${key}"
-             style="grid-template-columns:${s.columns !== 'auto'
-                ? `repeat(${s.columns}, minmax(0,1fr))`
-                : `repeat(auto-fill, minmax(${Math.round(150 * (s.cardSize || 1))}px, 1fr))`};">
+      ? `<div class="cards${s.columns !== 'auto' ? ' cards--fixed' : ''}" data-tier="${key}" style="grid-template-columns:${cols};">
            ${items.map(t => titleCardHTML(t, s.viewMode)).join('')}
          </div>`
       : `<div class="cards" data-tier="${key}" style="grid-template-columns:1fr;">
-           <p class="empty-note" style="padding:26px 14px;text-align:center;border:1.5px dashed var(--border);border-radius:12px;">
+           <p class="empty-note" style="padding:24px 14px;text-align:center;border:1.5px dashed var(--border);border-radius:12px;">
              ${anyFilter ? 'По текущему фильтру здесь пусто' : 'Пока пусто — можно перетащить карточку сюда'}
            </p>
          </div>`;
@@ -524,7 +475,7 @@ function renderTierSections() {
             <div class="tier-section__hint">${esc(hint)}</div>
           </div>
           <div class="tier-section__meta">
-            ${items.length} тайтл${items.length % 10 === 1 && items.length !== 11 ? '' : 'ов'} · ${fmtMin(totalMin)}
+            ${items.length} ${plural(items.length, TITLE_FORMS)} · ${fmtMin(totalMin)}
           </div>
         </header>
         ${cards}
@@ -532,9 +483,10 @@ function renderTierSections() {
   }).join('');
 
   hydrateImages(wrap);
-  $('#empty-state').hidden = !(list.length === 0);
+
+  const es = $('#empty-state');
+  es.hidden = list.length !== 0;
   if (list.length === 0) {
-    const es = $('#empty-state');
     if (!state.titles.length) {
       $('.empty-title', es).textContent = 'Каталог пуст';
       $('.empty-note', es).textContent = 'В data.json пока нет тайтлов';
@@ -543,34 +495,33 @@ function renderTierSections() {
       $('.empty-note', es).textContent = 'Попробуйте изменить запрос или сбросить фильтры';
     }
   }
+
   updateToolbar();
   if (isOwner && typeof Sortable !== 'undefined') initSortable();
 }
 
-// Обновить счётчик в тулбаре
 function updateToolbar() {
   const shown = visibleTitles().length;
-  $('#toolbar-count').textContent = state.search || hasActiveFilters()
-    ? `Показано ${shown} из ${state.titles.length}`
-    : `Всего: ${state.titles.length} тайтл(ов)`;
-  // Подсветка активной кнопки вида
+  const total = state.titles.length;
+  $('#toolbar-count').textContent = (state.search || hasActiveFilters())
+    ? `Показано ${shown} из ${total}`
+    : `Всего: ${total} ${plural(total, TITLE_FORMS)}`;
   $$('#view-switch .view-btn').forEach(b =>
     b.classList.toggle('is-active', b.dataset.view === state.settings.viewMode));
 }
 
-/* ---------- Инициализация SortableJS на всех сетках ---------- */
+/* ---------- SortableJS ---------- */
 function initSortable() {
   $$('#tier-sections .cards').forEach(grid => {
     new Sortable(grid, {
-      group: 'tiers',                 // общий буфер — перетаскивание между тирами
+      group: 'tiers',
       animation: 220,
       ghostClass: 'sortable-ghost',
       chosenClass: 'sortable-chosen',
       dragClass: 'sortable-drag',
-      delay: 140,                     // задержка перед драгом…
-      delayOnTouchOnly: true,         // …только на таче (чтобы не мешать скроллу)
+      delay: 140,
+      delayOnTouchOnly: true,       // на таче — задержка, чтобы не мешать скроллу
       fallbackTolerance: 4,
-      // Подсветка секции-приёмника во время перетаскивания
       onMove(evt) {
         $$('.tier-section.is-drop').forEach(x => x.classList.remove('is-drop'));
         evt.to?.closest('.tier-section')?.classList.add('is-drop');
@@ -583,7 +534,7 @@ function initSortable() {
   });
 }
 
-/* ---------- Обработка завершения перетаскивания ---------- */
+/* ---------- Завершение перетаскивания ---------- */
 function handleDrop(evt) {
   const item = evt.item;
   const id = item?.dataset.id;
@@ -601,57 +552,54 @@ function handleDrop(evt) {
   const pos = ids.indexOf(id);
   const nextId = pos >= 0 && pos < ids.length - 1 ? ids[pos + 1] : null;
 
-  // Переставляем в массиве данных
   state.titles = state.titles.filter(x => x.id !== id);
   t.tier = toTier;
 
   let insertIdx;
   const nextT = nextId ? state.titles.find(x => x.id === nextId) : null;
   if (nextT) {
-    insertIdx = state.titles.indexOf(nextT);            // перед следующей видимой карточкой
+    insertIdx = state.titles.indexOf(nextT);                 // перед следующей видимой
   } else {
-    let lastIdx = -1;                                    // после последнего тайтла тира
+    let lastIdx = -1;                                        // после последнего тайтла тира
     state.titles.forEach((x, i) => { if (x.tier === toTier) lastIdx = i; });
     if (lastIdx >= 0) insertIdx = lastIdx + 1;
     else {
-      const rank = TIER_KEYS.indexOf(toTier);            // перед тиром ниже рангом
+      const rank = TIER_KEYS.indexOf(toTier);                // перед тиром ниже рангом
       insertIdx = state.titles.findIndex(x => TIER_KEYS.indexOf(x.tier) > rank);
       if (insertIdx < 0) insertIdx = state.titles.length;
     }
   }
   state.titles.splice(insertIdx, 0, t);
 
-  // Если тир сменился — перерендер карточки на месте + плавная «перекраска»
+  // Смена тира: перерисовываем карточку на месте + плавная «перекраска»
   if (oldTier !== toTier) {
     item.outerHTML = titleCardHTML(t, state.settings.viewMode);
     hydrateImages(sec);
     const fresh = sec.querySelector(`.title-card[data-id="${CSS.escape(id)}"]`);
     fresh?.animate(
-      [{ filter: 'brightness(2) saturate(1.7)' }, { filter: 'brightness(1) saturate(1)' }],
+      [{ filter: 'brightness(1.9) saturate(1.6)' }, { filter: 'brightness(1) saturate(1)' }],
       { duration: 700, easing: 'cubic-bezier(.2,.8,.3,1)' }
     );
   }
 
-  // Обновляем зависимые блоки и сохраняем
   renderTierBar();
   updateSectionMetas();
   scheduleAutosave();
   emit('data-changed');
 }
 
-// Обновить меты секций (количество · время) без полного ререндера
 function updateSectionMetas() {
   const s = state.settings;
   $$('#tier-sections .tier-section').forEach(sec => {
     const items = state.titles.filter(t => t.tier === sec.dataset.tier);
     const total = items.reduce((sum, t) => sum + titleMinutes(t, s), 0);
     const meta = $('.tier-section__meta', sec);
-    if (meta) meta.textContent = `${items.length} тайтл(ов) · ${fmtMin(total)}`;
+    if (meta) meta.textContent = `${items.length} ${plural(items.length, TITLE_FORMS)} · ${fmtMin(total)}`;
   });
 }
 
 /* ============================================================
-   11. МОДАЛЬНЫЕ ОКНА (закрытие: только крестик или Esc)
+   11. МОДАЛКИ (закрытие — только крестик или Esc)
    ============================================================ */
 function openModal(el) {
   el.classList.add('is-open');
@@ -691,7 +639,7 @@ function openTitleModal(id) {
 
   body.innerHTML = `
     <div class="tm-head">
-      <div class="tm-cover" data-tier="${esc(t.tier)}">${coverHTML(t, 'lg')}</div>
+      <div class="tm-cover" data-tier="${esc(t.tier)}" data-name="${esc(t.title)}">${coverHTML(t, 'lg')}</div>
       <div class="tm-info">
         <div class="tm-tier" data-tier="${esc(t.tier)}">
           <span class="tier-letter" data-tier="${esc(t.tier)}" style="--letter-delay:-1.2s">${esc(t.tier)}</span>
@@ -727,7 +675,7 @@ function openTitleModal(id) {
   openModal($('#modal-title'));
 }
 
-// Кнопки модалки тайтла (делегирование): редактировать / двухшаговое удаление
+// Кнопки модалки: редактировать / двухшаговое удаление
  $('#modal-title-body').addEventListener('click', e => {
   const btn = e.target.closest('[data-act]');
   if (!btn) return;
@@ -737,7 +685,6 @@ function openTitleModal(id) {
     openForm(id, { backToTitle: true });
   }
   if (btn.dataset.act === 'del') {
-    // Первый клик — «взводим» кнопку, второй — удаляем (без системных confirm)
     if (btn.dataset.armed) {
       state.titles = state.titles.filter(x => x.id !== id);
       closeModal($('#modal-title'));
@@ -748,13 +695,18 @@ function openTitleModal(id) {
     } else {
       btn.dataset.armed = '1';
       btn.textContent = 'Точно удалить?';
-      setTimeout(() => { if (btn.isConnected) { delete btn.dataset.armed; btn.innerHTML = '<svg class="icon"><use href="#i-trash"/></svg>Удалить'; } }, 3000);
+      setTimeout(() => {
+        if (btn.isConnected) {
+          delete btn.dataset.armed;
+          btn.innerHTML = '<svg class="icon"><use href="#i-trash"/></svg>Удалить';
+        }
+      }, 3000);
     }
   }
 });
 
 /* ============================================================
-   12. ФОРМА ДОБАВЛЕНИЯ / РЕДАКТИРОВАНИЯ (только владелец)
+   12. ФОРМА ДОБАВЛЕНИЯ / РЕДАКТИРОВАНИЯ (владелец)
    ============================================================ */
 function openForm(editId = null, opts = {}) {
   const editing = editId ? state.titles.find(x => x.id === editId) : null;
@@ -773,7 +725,6 @@ function openForm(editId = null, opts = {}) {
 
   $('#modal-form-body').innerHTML = `
     <h3 class="form-title" id="form-heading">${editing ? 'Редактировать тайтл' : 'Добавить тайтл'}</h3>
-
     <div class="form-grid">
       <div class="form-field form-field--full">
         <label class="form-label" for="f-title">Название (рус.) *</label>
@@ -811,7 +762,6 @@ function openForm(editId = null, opts = {}) {
           Любимый тайтл
         </label>
       </div>
-
       <div class="form-field form-field--full">
         <label class="form-label">Жанры <span id="f-genres-count" style="text-transform:none;"></span></label>
         <div class="gsearch">
@@ -819,7 +769,6 @@ function openForm(editId = null, opts = {}) {
         </div>
         <div class="glist" id="f-genre-list"></div>
       </div>
-
       <div class="form-field form-field--full">
         <label class="form-label">Составные части (в порядке просмотра)</label>
         <div class="entries-editor" id="f-entries">
@@ -834,7 +783,6 @@ function openForm(editId = null, opts = {}) {
         <p class="form-hint">Дата — «2025-05-10» или период «2025-05-01 – 2025-05-20». У фильмов указывается общая длительность; у сериалов — число серий (минуты на серию можно переопределить).</p>
       </div>
     </div>
-
     <div class="form-actions">
       <button class="btn btn--ghost" data-act="cancel">Отмена</button>
       <button class="btn btn--accent" data-act="save">
@@ -849,10 +797,11 @@ function openForm(editId = null, opts = {}) {
   setTimeout(() => $('#f-title')?.focus(), 120);
 }
 
-/* ---------- Одна строка составной части ---------- */
+/* ---------- Строка составной части ---------- */
 function entryRowHTML(e = {}) {
   const isFilm = e.kind === 'Фильм';
-  const opts = ENTRY_KINDS.map(k => `<option value="${esc(k)}" ${k === e.kind ? 'selected' : ''}>${esc(k)}</option>`).join('');
+  const opts = ENTRY_KINDS.map(k =>
+    `<option value="${esc(k)}" ${k === e.kind ? 'selected' : ''}>${esc(k)}</option>`).join('');
   return `
     <div class="entry-row">
       <div class="entry-row__num">
@@ -881,7 +830,7 @@ function entryRowHTML(e = {}) {
     </div>`;
 }
 
-/* ---------- Мультиселект жанров с поиском ---------- */
+/* ---------- Мультиселект жанров ---------- */
 function renderGenreList() {
   const q = state.form.genreQuery.trim().toLowerCase();
   const list = GENRES.filter(g => !q || g.toLowerCase().includes(q));
@@ -895,19 +844,18 @@ function renderGenreList() {
   $('#f-genres-count').textContent = n ? `— выбрано: ${n}` : '';
 }
 
-/* ---------- Живой пересчёт итога формы ---------- */
+/* ---------- Сбор данных строки + итог ---------- */
 function collectEntryFromRow(row) {
   const kind = $('.ent-kind', row).value;
   const isFilm = kind === 'Фильм';
   const epsRaw = $('.ent-eps', row).value;
   const minRaw = $('.ent-min', row).value;
-  const date = $('.ent-date', row).value.trim();
   return {
     kind,
     episodes: isFilm ? null : (epsRaw === '' ? null : Number(epsRaw)),
     minutesPerEpisode: isFilm ? null : (minRaw === '' ? null : Number(minRaw)),
     durationMinutes: isFilm ? (minRaw === '' ? null : Number(minRaw)) : null,
-    watchDate: date,
+    watchDate: $('.ent-date', row).value.trim(),
   };
 }
 
@@ -920,7 +868,6 @@ function recalcFormTotal() {
   if (el) el.textContent = fmtMin(total);
 }
 
-/* ---------- Превью обложки в форме ---------- */
 function coverPreview() {
   const url = $('#f-cover')?.value.trim();
   const img = $('#f-cover-preview');
@@ -930,17 +877,15 @@ function coverPreview() {
   img.src = url;
 }
 
-/* ---------- События формы (делегирование) ---------- */
+/* ---------- События формы ---------- */
 const formBody = $('#modal-form-body');
 
 formBody.addEventListener('click', e => {
-  // Выбор тира
   const tierPick = e.target.closest('[data-tier-pick]');
   if (tierPick) {
     $$('#f-tier .chip').forEach(c => c.classList.toggle('is-on', c === tierPick));
     return;
   }
-  // Тогл жанра
   const genreChip = e.target.closest('[data-genre]');
   if (genreChip) {
     const g = genreChip.dataset.genre;
@@ -948,10 +893,8 @@ formBody.addEventListener('click', e => {
     renderGenreList();
     return;
   }
-  // Удаление части
   const del = e.target.closest('.btn-icon-del');
   if (del) { del.closest('.entry-row').remove(); recalcFormTotal(); return; }
-  // Добавить часть
   if (e.target.closest('#f-add-entry')) {
     const type = $('#f-type').value;
     const lastKind = $$('#f-entries .ent-kind').pop()?.value;
@@ -964,7 +907,6 @@ formBody.addEventListener('click', e => {
     recalcFormTotal();
     return;
   }
-  // Действия внизу
   const act = e.target.closest('[data-act]')?.dataset.act;
   if (act === 'cancel') {
     closeModal($('#modal-form'));
@@ -985,7 +927,6 @@ formBody.addEventListener('input', e => {
 formBody.addEventListener('change', e => {
   const kindSel = e.target.closest('.ent-kind');
   if (kindSel) {
-    // Смена типа части: перестраиваем подписи и активность полей
     const row = kindSel.closest('.entry-row');
     const isFilm = kindSel.value === 'Фильм';
     const eps = $('.ent-eps', row), min = $('.ent-min', row);
@@ -1014,7 +955,6 @@ function saveForm() {
   const cover = $('#f-cover').value.trim();
 
   if (state.form.editingId) {
-    // Редактирование: сохраняем id и дату добавления (порядок «последних» не ломается)
     const t = state.titles.find(x => x.id === state.form.editingId);
     if (t) Object.assign(t, {
       title, titleOriginal: $('#f-original').value.trim(), cover,
@@ -1038,15 +978,12 @@ function saveForm() {
   renderAll();
   scheduleAutosave();
   emit('data-changed');
-  // Возврат в карточку тайтла, если форма открыта из неё
   if (state.form?.backToTitle && backId) openTitleModal(backId);
 }
 
 /* ============================================================
-   13. КАЛЕНДАРЬ ПРОСМОТРА
+   13. КАЛЕНДАРЬ
    ============================================================ */
-
-// Сбор событий: 'YYYY-MM-DD' -> [{ title, entry }] (по дате НАЧАЛА части)
 function buildEvents() {
   const map = new Map();
   for (const t of state.titles) {
@@ -1067,10 +1004,9 @@ function renderCalendar() {
   const y = d.getFullYear(), m = d.getMonth();
   $('#cal-title').textContent = `${MONTHS_NOM[m]} ${y}`;
 
-  const firstPad = (new Date(y, m, 1).getDay() + 6) % 7;   // Пн = 0
+  const firstPad = (new Date(y, m, 1).getDay() + 6) % 7;
   const days = new Date(y, m + 1, 0).getDate();
   const todayKey = isoDate(new Date());
-  const grid = $('#cal-grid');
   let html = '';
 
   for (let i = 0; i < firstPad; i++) html += '<div class="cal-cell cal-cell--empty"></div>';
@@ -1078,11 +1014,7 @@ function renderCalendar() {
   for (let day = 1; day <= days; day++) {
     const key = `${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     const evs = state.events.get(key) || [];
-    const cls = [
-      'cal-cell',
-      evs.length ? 'cal-cell--active' : '',
-      key === todayKey ? 'cal-cell--today' : '',
-    ].join(' ');
+    const cls = ['cal-cell', evs.length ? 'cal-cell--active' : '', key === todayKey ? 'cal-cell--today' : ''].join(' ');
     const dots = evs.slice(0, 7).map(ev =>
       `<span class="cal-dot" data-tier="${esc(ev.title.tier)}"></span>`).join('');
     const more = evs.length > 7 ? `<span class="cal-cell__more">+${evs.length - 7}</span>` : '';
@@ -1092,10 +1024,9 @@ function renderCalendar() {
         <div class="cal-cell__dots">${dots}${more}</div>
       </div>`;
   }
-  grid.innerHTML = html;
+  $('#cal-grid').innerHTML = html;
 }
 
-/* ---------- Поповер дня ---------- */
 function showCalPop(cell) {
   hideCalPop();
   const evs = state.events.get(cell.dataset.date) || [];
@@ -1117,9 +1048,7 @@ function hideCalPop() {
   if (state.popCell) { $('.cal-pop', state.popCell)?.remove(); state.popCell = null; }
 }
 
-/* ---------- Список просмотров по месяцам ---------- */
 function renderCalList() {
-  // Сортируем все события по дате по возрастанию
   const items = [];
   for (const [key, evs] of state.events) {
     const [y, m, d] = key.split('-').map(Number);
@@ -1177,8 +1106,7 @@ function renderFilters() {
       <p class="filter-group-title">Тип</p>
       <div class="chip-row">
         ${TYPES.map(x => `
-          <button class="chip${f.types.has(x) ? ' is-on' : ''}" data-f="type" data-v="${esc(x)}"
-            style="--tier-c: var(--accent);">
+          <button class="chip${f.types.has(x) ? ' is-on' : ''}" data-f="type" data-v="${esc(x)}" style="--tier-c: var(--accent);">
             ${f.types.has(x) ? '<svg class="icon"><use href="#i-check"/></svg>' : ''}${esc(x)}
           </button>`).join('')}
       </div>
@@ -1339,23 +1267,26 @@ function renderSettings() {
       </div>
     </div>`;
 
-  function hydrateSettings() {
-  const root = $('#settings-body');
+  hydrateSettings();
 }
 
 function hydrateSettings() {
   const root = $('#settings-body');
+  // Слушатели навешиваем ОДИН раз — #settings-body живёт постоянно,
+  // а renderSettings() лишь перезаписывает его innerHTML
+  if (hydrateSettings.bound) return;
+  hydrateSettings.bound = true;
 
   root.addEventListener('click', e => {
     const btn = e.target.closest('[data-set]');
-    if (!btn) return;
-    const key = btn.dataset.set;
-
-    if (key === 'accent') { setSetting('accent', btn.dataset.val); }
-    if (key === 'animations') { setSetting('animations', btn.dataset.val === 'true'); }
-    if (key === 'particle-preset') {
-      state.settings.particles.preset = btn.dataset.val;
-      persistSettings(); applySettings(); renderSettings();
+    if (btn) {
+      const key = btn.dataset.set;
+      if (key === 'accent') setSetting('accent', btn.dataset.val);
+      if (key === 'animations') setSetting('animations', btn.dataset.val === 'true');
+      if (key === 'particle-preset') {
+        state.settings.particles.preset = btn.dataset.val;
+        persistSettings(); applySettings(); renderSettings();
+      }
     }
     if (e.target.closest('#btn-reset-settings')) {
       state.settings = deepMerge(DEFAULT_SETTINGS, {});
@@ -1371,12 +1302,12 @@ function hydrateSettings() {
     const key = el.dataset.set;
 
     if (key === 'accent-custom') { setSetting('accent', el.value); return; }
-
     if (['theme', 'viewMode', 'columns'].includes(key)) return;   // обрабатываются в change
 
     if (key === 'cardSize') {
       setSetting('cardSize', Number(el.value));
-      root.querySelector('[data-val-label="cardSize"]').textContent = Math.round(el.value * 100) + '%';
+      const lbl = root.querySelector('[data-val-label="cardSize"]');
+      if (lbl) lbl.textContent = Math.round(el.value * 100) + '%';
       renderTierSections();
       return;
     }
@@ -1391,9 +1322,9 @@ function hydrateSettings() {
     if (key === 'avgEpisode' || key === 'avgMovie') {
       setSetting(key, Number(el.value));
       const row = el.closest('.set-row');
-      $('.set-row__value', row).textContent = el.value + ' мин';
-      // Средние длительности влияют на всё время — пересчитываем
-      renderTierSections(); renderRecentStrip(); renderCalendar(); renderCalList();
+      const lbl = $('.set-row__value', row);
+      if (lbl) lbl.textContent = el.value + ' мин';
+      renderTierSections(); renderRecentStrip();
       emit('data-changed');
       return;
     }
@@ -1410,7 +1341,7 @@ function hydrateSettings() {
 }
 
 /* ============================================================
-   16. ТОСТЫ-УВЕДОМЛЕНИЯ
+   16. ТОСТЫ
    ============================================================ */
 function showToast(text, type = 'info', ms = 3400) {
   const wrap = $('#toasts');
@@ -1427,11 +1358,11 @@ function showToast(text, type = 'info', ms = 3400) {
 }
 
 /* ============================================================
-   17. ВКЛАДКИ, ПОИСК, ДЕЛЕГИРОВАНИЕ КЛИКОВ
+   17. ВКЛАДКИ, DRAWER, ПАРЫЛЛАКС
    ============================================================ */
 function switchTab(name) {
   state.tab = name;
-  // ФИКС: обязательно снимаем атрибут hidden — класс is-active не побеждает
+  // ВАЖНО: снимаем атрибут hidden — класс is-active не побеждает
   // правило [hidden]{display:none!important}, и вкладки не открывались
   $$('.tab-panel').forEach(p => {
     const active = p.id === 'tab-' + name;
@@ -1453,10 +1384,10 @@ function switchTab(name) {
   if (name === 'settings') renderSettings();
 }
 
-/* ---------- Модалка/дровер открытия ---------- */
 function openDrawer() {
-  $('#drawer').classList.add('is-open');
-  $('#drawer').setAttribute('aria-hidden', 'false');
+  const d = $('#drawer');
+  d.classList.add('is-open');
+  d.setAttribute('aria-hidden', 'false');
   const ov = $('#drawer-overlay');
   ov.hidden = false;
   requestAnimationFrame(() => ov.classList.add('is-open'));
@@ -1471,7 +1402,6 @@ function closeDrawer() {
   setTimeout(() => { ov.hidden = true; }, 300);
 }
 
-/* ---------- Полный ре-рендер ---------- */
 function renderAll() {
   renderRecentStrip();
   renderTierBar();
@@ -1481,9 +1411,7 @@ function renderAll() {
   emit('data-changed');
 }
 
-/* ============================================================
-   18. ПАРЫЛЛАКС ФОНА (движение мыши -> --px/--py)
-   ============================================================ */
+/* ---------- Параллакс фона ---------- */
 function initParallax() {
   let tx = 0, ty = 0, px = 0, py = 0, raf = null;
   window.addEventListener('mousemove', e => {
@@ -1504,30 +1432,24 @@ function initParallax() {
 }
 
 /* ============================================================
-   19. ПРИВЯЗКА СОБЫТИЙ ИНТЕРФЕЙСА
+   18. ПРИВЯЗКА СОБЫТИЙ ИНТЕРФЕЙСА
    ============================================================ */
 function bindUI() {
-  // Табы (шапка + drawer)
   document.addEventListener('click', e => {
     const tabBtn = e.target.closest('.tab-btn, .drawer-link');
     if (tabBtn) { switchTab(tabBtn.dataset.tab); return; }
 
-    // Карточка тайтла (архив и лента)
     const card = e.target.closest('.title-card, .recent-card');
     if (card?.dataset.id) { openTitleModal(card.dataset.id); return; }
 
-    // Чип тира на панели тиров = фильтр
     const tierChip = e.target.closest('[data-tier-filter]');
     if (tierChip) {
       const k = tierChip.dataset.tierFilter;
       state.filters.tiers.has(k) ? state.filters.tiers.delete(k) : state.filters.tiers.add(k);
-      renderTierBar();
-      renderFilters();
-      renderTierSections();
+      renderTierBar(); renderFilters(); renderTierSections();
       return;
     }
 
-    // Переключатель вида
     const viewBtn = e.target.closest('.view-btn');
     if (viewBtn) {
       state.settings.viewMode = viewBtn.dataset.view;
@@ -1536,15 +1458,11 @@ function bindUI() {
       return;
     }
 
-    // Кнопки шапки
     if (e.target.closest('#btn-settings')) { switchTab('settings'); return; }
     if (e.target.closest('#btn-add') || e.target.closest('#drawer-add')) { openForm(); return; }
-
-    // Drawer
     if (e.target.closest('#btn-burger')) { openDrawer(); return; }
     if (e.target.closest('#drawer-close') || e.target.closest('#drawer-overlay')) { closeDrawer(); return; }
 
-    // Фильтры
     if (e.target.closest('#btn-filters')) {
       const panel = $('#filters-panel');
       const open = panel.hidden;
@@ -1565,7 +1483,6 @@ function bindUI() {
       return;
     }
 
-    // Календарь: навигация
     if (e.target.closest('#cal-prev')) { state.calDate.setMonth(state.calDate.getMonth() - 1); renderCalendar(); return; }
     if (e.target.closest('#cal-next')) { state.calDate.setMonth(state.calDate.getMonth() + 1); renderCalendar(); return; }
     if (e.target.closest('#cal-today')) { state.calDate = new Date(); renderCalendar(); return; }
@@ -1579,7 +1496,6 @@ function bindUI() {
       return;
     }
 
-    // Поповер дня: тап/клик по активной ячейке
     const cell = e.target.closest('.cal-cell--active');
     if (cell) {
       if (state.popCell === cell) hideCalPop(); else showCalPop(cell);
@@ -1589,7 +1505,7 @@ function bindUI() {
     hideCalPop();
   });
 
-  // Esc: закрыть форму / модалку / drawer (только они, НЕ клик по фону)
+  // Esc — закрыть форму / модалку / меню (НЕ клик по фону)
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
     const form = $('#modal-form'), title = $('#modal-title');
@@ -1603,7 +1519,6 @@ function bindUI() {
     }
   });
 
-  // Крестики модалок
   $('#modal-title-close').addEventListener('click', () => closeModal($('#modal-title')));
   $('#modal-form-close').addEventListener('click', () => {
     closeModal($('#modal-form'));
@@ -1643,10 +1558,9 @@ function bindUI() {
 }
 
 /* ============================================================
-   20. ЗАПУСК
+   19. ЗАПУСК
    ============================================================ */
 async function init() {
-  // Режим владельца
   if (isOwner) {
     document.body.classList.add('owner-mode');
     $('#btn-add').hidden = false;
@@ -1674,38 +1588,30 @@ async function init() {
 document.addEventListener('DOMContentLoaded', init);
 
 /* ============================================================
-   21. ПУБЛИЧНЫЙ API (используется admin.js и stats.js)
+   20. ПУБЛИЧНЫЙ API (для admin.js и stats.js)
    ============================================================ */
 window.App = {
-  // Данные и состояние
   state,
   get titles() { return state.titles; },
   setTitles(arr) { state.titles = arr || []; renderAll(); },
   get settings() { return state.settings; },
   isOwner: () => isOwner,
 
-  // Константы
   TIERS, TIER_KEYS, TYPES, GENRES, PRESETS, ENTRY_KINDS,
 
-  // Вычисления
   entryMinutes, titleMinutes, totalEpisodes, fmtMin,
   parseWatchDate, isoDate, monthKey, fmtDateRu,
 
-  // Перерисовка
   renderAll, renderTierSections, renderCalendar, renderCalList,
   renderSettings, renderFilters,
 
-  // Настройки
   setSetting, applySettings, persistSettings,
 
-  // Данные
   scheduleAutosave, saveToLocal, forceRemoteLoad,
   exportJSON: () => JSON.stringify({ titles: state.titles }, null, 2),
 
-  // UI
   showToast, switchTab, openTitleModal, openForm,
 
-  // Статистика фильмов: минуты всех частей-фильмов (в т.ч. внутри сериалов)
   movieStats() {
     const s = state.settings;
     let movieMin = 0, totalMin = 0, movieCount = 0;
@@ -1719,6 +1625,5 @@ window.App = {
     return { movieMin, totalMin, movieCount };
   },
 
-  // События (мини-шина)
   on, emit,
 };
