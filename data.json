@@ -1,88 +1,248 @@
 {
+  "version": 1,
+  "settings": {
+    "averageEpisodeMinutes": 24,
+    "averageMovieMinutes": 110,
+    "theme": "dark",
+    "accentColor": "#9b8cff",
+    "view": "grid",
+    "desktopColumns": 9,
+    "cardSize": "medium",
+    "animations": true,
+    "backgroundPreset": "sakura",
+    "particleDensity": 20,
+    "particleSpeed": 1,
+    "particleSize": 1
+  },
+  "genres": [
+    "Авангард",
+    "Авто/Мото",
+    "Ангелы",
+    "Боевые искусства",
+    "Вампиры",
+    "Видеоигры",
+    "Виртуальная реальность",
+    "Военное",
+    "Выживание",
+    "Гарем",
+    "Гонки",
+    "Гэг-юмор",
+    "Гэмблинг",
+    "Демоны",
+    "Детектив",
+    "Детское",
+    "Дзёсэй",
+    "Дистопия",
+    "Драма",
+    "Животные",
+    "Зомби",
+    "Игра",
+    "Идолы",
+    "ИИ и роботы",
+    "Исекай",
+    "Историческое",
+    "Карты",
+    "Киберпанк",
+    "Комедия",
+    "Космос",
+    "Кулинария",
+    "Магия",
+    "Медицина",
+    "Меха",
+    "Мистика",
+    "Мифология",
+    "Музыка",
+    "Настольные игры",
+    "Научная фантастика",
+    "Ниндзя",
+    "Обратный гарем",
+    "Обратный исекай",
+    "Офис/Работа",
+    "Пародия",
+    "Повседневность",
+    "Полиция",
+    "Постапокалиптика",
+    "Приключения",
+    "Природа/Экология",
+    "Психологическое",
+    "Путешествия во времени",
+    "Расследование",
+    "Романтика",
+    "Романтическая комедия",
+    "Самураи",
+    "Саспенс",
+    "Сверхспособности",
+    "Сверхъестественное",
+    "Семейное",
+    "Спорт",
+    "Стимпанк",
+    "Стратегия",
+    "Сэйнэн",
+    "Сёдзё",
+    "Сёдзё-ай",
+    "Сёнэн",
+    "Сёнэн-ай",
+    "Танцы",
+    "Театр",
+    "Триллер",
+    "Тёмное фэнтези",
+    "Ужасы",
+    "Университет",
+    "Фэнтези",
+    "Школа",
+    "Экшен/Боевик",
+    "Этти"
+  ],
   "titles": [
     {
-      "id": "t1",
+      "id": "demo-frieren",
+      "title": "Провожающая в последний путь Фрирен",
+      "titleOriginal": "Sousou no Frieren",
+      "cover": "https://cdn.myanimelist.net/images/anime/1015/138006l.jpg",
+      "type": "TV-сериал",
+      "genres": [
+        "Фэнтези",
+        "Приключения",
+        "Драма"
+      ],
+      "tier": "SSS",
+      "favorite": true,
+      "createdAt": "2024-05-10",
+      "entries": [
+        {
+          "kind": "Сезон 1",
+          "episodes": 28,
+          "minutesPerEpisode": 24,
+          "durationMinutes": null,
+          "watchDate": "2024-05-01 – 2024-05-20"
+        }
+      ]
+    },
+    {
+      "id": "demo-attack",
       "title": "Атака титанов",
       "titleOriginal": "Shingeki no Kyojin",
-      "cover": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 560'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23ff5f9e'/><stop offset='1' stop-color='%237c5cff'/></linearGradient></defs><rect width='400' height='560' fill='url(%23g)'/><text x='200' y='300' font-size='180' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='900'>A</text></svg>",
+      "cover": "https://cdn.myanimelist.net/images/anime/10/47347l.jpg",
       "type": "TV-сериал",
-      "genres": ["Экшен/Боевик", "Драма", "Тёмное фэнтези", "Военное"],
-      "tier": "SSS",
-      "favorite": true,
-      "createdAt": "2024-01-15",
-      "entries": [
-        { "kind": "Сезон 1", "episodes": 25, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2023-11-01 – 2023-11-20" },
-        { "kind": "Сезон 2", "episodes": 12, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2023-12-01 – 2023-12-10" }
-      ]
-    },
-    {
-      "id": "t2",
-      "title": "Ванпанчмен",
-      "titleOriginal": "One Punch Man",
-      "cover": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 560'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23ff8a3d'/><stop offset='1' stop-color='%23ff4d6d'/></linearGradient></defs><rect width='400' height='560' fill='url(%23g)'/><text x='200' y='300' font-size='180' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='900'>O</text></svg>",
-      "type": "TV-сериал",
-      "genres": ["Экшен/Боевик", "Комедия", "Пародия", "Сверхспособности"],
+      "genres": [
+        "Экшен/Боевик",
+        "Драма",
+        "Тёмное фэнтези"
+      ],
       "tier": "S",
       "favorite": true,
-      "createdAt": "2024-02-03",
+      "createdAt": "2024-04-18",
       "entries": [
-        { "kind": "Сезон 1", "episodes": 12, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2024-02-05 – 2024-02-12" }
+        {
+          "kind": "Сезон 1",
+          "episodes": 25,
+          "minutesPerEpisode": 24,
+          "durationMinutes": null,
+          "watchDate": "2024-03-01 – 2024-03-12"
+        },
+        {
+          "kind": "Сезон 2",
+          "episodes": 12,
+          "minutesPerEpisode": 24,
+          "durationMinutes": null,
+          "watchDate": "2024-03-13 – 2024-03-18"
+        }
       ]
     },
     {
-      "id": "t3",
-      "title": "Унесённые призраками",
-      "titleOriginal": "Sen to Chihiro no Kamikakushi",
-      "cover": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 560'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%234dabff'/><stop offset='1' stop-color='%232ecc71'/></linearGradient></defs><rect width='400' height='560' fill='url(%23g)'/><text x='200' y='300' font-size='180' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='900'>S</text></svg>",
+      "id": "demo-your-name",
+      "title": "Твоё имя",
+      "titleOriginal": "Kimi no Na wa.",
+      "cover": "https://cdn.myanimelist.net/images/anime/5/87048l.jpg",
       "type": "Фильм",
-      "genres": ["Приключения", "Фэнтези", "Мифология", "Семейное"],
-      "tier": "SSS",
-      "favorite": true,
-      "createdAt": "2024-02-20",
-      "entries": [
-        { "kind": "Фильм", "episodes": null, "minutesPerEpisode": null, "durationMinutes": 125, "watchDate": "2024-02-21" }
-      ]
-    },
-    {
-      "id": "t4",
-      "title": "Моя геройская академия",
-      "titleOriginal": "Boku no Hero Academia",
-      "cover": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 560'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23b388ff'/><stop offset='1' stop-color='%234dabff'/></linearGradient></defs><rect width='400' height='560' fill='url(%23g)'/><text x='200' y='300' font-size='180' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='900'>B</text></svg>",
-      "type": "TV-сериал",
-      "genres": ["Экшен/Боевик", "Сверхспособности", "Школа", "Сёнэн"],
+      "genres": [
+        "Романтика",
+        "Сверхъестественное",
+        "Драма"
+      ],
       "tier": "A",
-      "favorite": false,
-      "createdAt": "2024-03-10",
+      "favorite": true,
+      "createdAt": "2024-03-22",
       "entries": [
-        { "kind": "Сезон 1", "episodes": 13, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2024-03-12 – 2024-03-20" }
+        {
+          "kind": "Фильм",
+          "episodes": 1,
+          "minutesPerEpisode": 24,
+          "durationMinutes": 106,
+          "watchDate": "2024-03-20"
+        }
       ]
     },
     {
-      "id": "t5",
-      "title": "Тетрадь смерти",
-      "titleOriginal": "Death Note",
-      "cover": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 560'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23ff5fbf'/><stop offset='1' stop-color='%23c9184a'/></linearGradient></defs><rect width='400' height='560' fill='url(%23g)'/><text x='200' y='300' font-size='180' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='900'>D</text></svg>",
+      "id": "demo-haikyuu",
+      "title": "Волейбол!!",
+      "titleOriginal": "Haikyuu!!",
+      "cover": "https://cdn.myanimelist.net/images/anime/7/76014l.jpg",
       "type": "TV-сериал",
-      "genres": ["Триллер", "Психологическое", "Детектив", "Сверхъестественное"],
-      "tier": "S",
-      "favorite": false,
-      "createdAt": "2024-04-05",
-      "entries": [
-        { "kind": "Сезон 1", "episodes": 37, "minutesPerEpisode": 23, "durationMinutes": null, "watchDate": "2024-04-07 – 2024-05-02" }
-      ]
-    },
-    {
-      "id": "t6",
-      "title": "Дорохедоро",
-      "titleOriginal": "Dorohedoro",
-      "cover": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 560'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%232ecc71'/><stop offset='1' stop-color='%23ffd54a'/></linearGradient></defs><rect width='400' height='560' fill='url(%23g)'/><text x='200' y='300' font-size='180' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='900'>D</text></svg>",
-      "type": "ONA",
-      "genres": ["Тёмное фэнтези", "Экшен/Боевик", "Комедия", "Мистика"],
+      "genres": [
+        "Спорт",
+        "Комедия",
+        "Школа"
+      ],
       "tier": "B",
       "favorite": false,
-      "createdAt": "2024-05-12",
+      "createdAt": "2024-02-11",
       "entries": [
-        { "kind": "ONA", "episodes": 12, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2024-05-14 – 2024-05-22" }
+        {
+          "kind": "Сезон 1",
+          "episodes": 25,
+          "minutesPerEpisode": 24,
+          "durationMinutes": null,
+          "watchDate": "2024-02-01 – 2024-02-14"
+        }
+      ]
+    },
+    {
+      "id": "demo-spirited-away",
+      "title": "Унесённые призраками",
+      "titleOriginal": "Sen to Chihiro no Kamikakushi",
+      "cover": "https://cdn.myanimelist.net/images/anime/6/79597l.jpg",
+      "type": "Фильм",
+      "genres": [
+        "Приключения",
+        "Фэнтези",
+        "Сверхъестественное"
+      ],
+      "tier": "C",
+      "favorite": false,
+      "createdAt": "2024-01-19",
+      "entries": [
+        {
+          "kind": "Фильм",
+          "episodes": 1,
+          "minutesPerEpisode": 24,
+          "durationMinutes": 125,
+          "watchDate": "2024-01-18"
+        }
+      ]
+    },
+    {
+      "id": "demo-exarm",
+      "title": "EX-ARM",
+      "titleOriginal": "EX-ARM",
+      "cover": "https://cdn.myanimelist.net/images/anime/1764/106659l.jpg",
+      "type": "TV-сериал",
+      "genres": [
+        "Научная фантастика",
+        "Экшен/Боевик",
+        "ИИ и роботы"
+      ],
+      "tier": "E",
+      "favorite": false,
+      "createdAt": "2023-12-04",
+      "entries": [
+        {
+          "kind": "Сезон 1",
+          "episodes": 12,
+          "minutesPerEpisode": 24,
+          "durationMinutes": null,
+          "watchDate": "2023-11-20 – 2023-11-26"
+        }
       ]
     }
   ]
