@@ -1,259 +1,92 @@
 {
   "titles": [
     {
-      "id": "fma-brotherhood",
-      "title": "Стальной алхимик: Братство",
-      "titleOriginal": "Hagane no Renkinjutsushi: Fullmetal Alchemist Brotherhood",
-      "cover": "https://picsum.photos/seed/fma-brotherhood/300/420.jpg",
+      "id": "t1",
+      "title": "Атака титанов",
+      "titleOriginal": "Shingeki no Kyojin",
+      "cover": "https://picsum.photos/seed/aot/400/560",
       "type": "TV-сериал",
-      "genres": ["Драма", "Экшен/Боевик", "Приключения", "Фэнтези", "Сэйнэн"],
+      "genres": ["Экшен/Боевик", "Драма", "Тёмное фэнтези", "Военное"],
       "tier": "SSS",
       "favorite": true,
-      "createdAt": "2024-11-03T22:10",
+      "createdAt": "2024-01-15",
       "entries": [
-        {
-          "kind": "Сезон 1",
-          "episodes": 64,
-          "minutesPerEpisode": 24,
-          "durationMinutes": null,
-          "watchDate": "2024-09-12 – 2024-11-02"
-        }
+        { "kind": "Сезон 1", "episodes": 25, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2023-11-01 – 2023-11-20" },
+        { "kind": "Сезон 2", "episodes": 12, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2023-12-01 – 2023-12-10" },
+        { "kind": "Сезон 3", "episodes": 22, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2024-01-02 – 2024-01-18" },
+        { "kind": "Фильм", "episodes": null, "minutesPerEpisode": null, "durationMinutes": 118, "watchDate": "2024-01-20" }
       ]
     },
     {
-      "id": "kimetsu-no-yaiba",
-      "title": "Клинок, рассекающий демонов",
-      "titleOriginal": "Kimetsu no Yaiba",
-      "cover": "https://picsum.photos/seed/kimetsu/300/420.jpg",
+      "id": "t2",
+      "title": "Ванпанчмен",
+      "titleOriginal": "One Punch Man",
+      "cover": "https://picsum.photos/seed/opm/400/560",
       "type": "TV-сериал",
-      "genres": ["Экшен/Боевик", "Сверхъестественное", "Демоны", "Историческое", "Сёнэн"],
-      "tier": "S",
-      "favorite": false,
-      "createdAt": "2025-01-09T19:32",
-      "entries": [
-        {
-          "kind": "Сезон 1",
-          "episodes": 26,
-          "minutesPerEpisode": 23,
-          "durationMinutes": null,
-          "watchDate": "2024-11-05 – 2024-12-01"
-        },
-        {
-          "kind": "Фильм",
-          "episodes": null,
-          "minutesPerEpisode": null,
-          "durationMinutes": 117,
-          "watchDate": "2024-12-02"
-        },
-        {
-          "kind": "Сезон 2",
-          "episodes": 11,
-          "minutesPerEpisode": 23,
-          "durationMinutes": null,
-          "watchDate": "2024-12-03 – 2024-12-18"
-        },
-        {
-          "kind": "Сезон 3",
-          "episodes": 11,
-          "minutesPerEpisode": 23,
-          "durationMinutes": null,
-          "watchDate": "2024-12-20 – 2025-01-08"
-        }
-      ]
-    },
-    {
-      "id": "violet-evergarden",
-      "title": "Вайолет Эвергарден",
-      "titleOriginal": "Violet Evergarden",
-      "cover": "https://picsum.photos/seed/violet-ev/300/420.jpg",
-      "type": "TV-сериал",
-      "genres": ["Драма", "Повседневность", "Фэнтези", "Историческое"],
+      "genres": ["Экшен/Боевик", "Комедия", "Пародия", "Сверхспособности"],
       "tier": "S",
       "favorite": true,
-      "createdAt": "2025-01-23T21:05",
+      "createdAt": "2024-02-03",
       "entries": [
-        {
-          "kind": "Сезон 1",
-          "episodes": 13,
-          "minutesPerEpisode": 24,
-          "durationMinutes": null,
-          "watchDate": "2025-01-10 – 2025-01-22"
-        },
-        {
-          "kind": "Спешл",
-          "episodes": 1,
-          "minutesPerEpisode": 24,
-          "durationMinutes": null,
-          "watchDate": "2025-01-23"
-        }
+        { "kind": "Сезон 1", "episodes": 12, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2024-02-05 – 2024-02-12" },
+        { "kind": "Сезон 2", "episodes": 12, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2024-03-01 – 2024-03-09" }
       ]
     },
     {
-      "id": "kimi-no-na-wa",
-      "title": "Твоё имя",
-      "titleOriginal": "Kimi no Na wa",
-      "cover": "https://picsum.photos/seed/your-name/300/420.jpg",
+      "id": "t3",
+      "title": "Унесённые призраками",
+      "titleOriginal": "Sen to Chihiro no Kamikakushi",
+      "cover": "https://picsum.photos/seed/spirited/400/560",
       "type": "Фильм",
-      "genres": ["Романтика", "Драма", "Фэнтези", "Мистика"],
-      "tier": "A",
-      "favorite": false,
-      "createdAt": "2025-01-26T23:40",
+      "genres": ["Приключения", "Фэнтези", "Мифология", "Семейное"],
+      "tier": "SSS",
+      "favorite": true,
+      "createdAt": "2024-02-20",
       "entries": [
-        {
-          "kind": "Фильм",
-          "episodes": null,
-          "minutesPerEpisode": null,
-          "durationMinutes": 106,
-          "watchDate": "2025-01-26"
-        }
+        { "kind": "Фильм", "episodes": null, "minutesPerEpisode": null, "durationMinutes": 125, "watchDate": "2024-02-21" }
       ]
     },
     {
-      "id": "koe-no-katachi",
-      "title": "Форма голоса",
-      "titleOriginal": "Koe no Katachi",
-      "cover": "https://picsum.photos/seed/silent-voice/300/420.jpg",
-      "type": "Фильм",
-      "genres": ["Драма", "Романтика", "Школа", "Сэйнэн"],
-      "tier": "A",
-      "favorite": false,
-      "createdAt": "2025-02-01T20:15",
-      "entries": [
-        {
-          "kind": "Фильм",
-          "episodes": null,
-          "minutesPerEpisode": null,
-          "durationMinutes": null,
-          "watchDate": "2025-02-01"
-        }
-      ]
-    },
-    {
-      "id": "haikyuu",
-      "title": "Волейбол!!",
-      "titleOriginal": "Haikyuu!!",
-      "cover": "https://picsum.photos/seed/haikyuu/300/420.jpg",
+      "id": "t4",
+      "title": "Моя геройская академия",
+      "titleOriginal": "Boku no Hero Academia",
+      "cover": "https://picsum.photos/seed/mha/400/560",
       "type": "TV-сериал",
-      "genres": ["Спорт", "Комедия", "Школа", "Сёнэн"],
+      "genres": ["Экшен/Боевик", "Сверхспособности", "Школа", "Сёнэн"],
       "tier": "A",
       "favorite": false,
-      "createdAt": "2025-04-07T18:50",
+      "createdAt": "2024-03-10",
       "entries": [
-        {
-          "kind": "Сезон 1",
-          "episodes": 25,
-          "minutesPerEpisode": 24,
-          "durationMinutes": null,
-          "watchDate": "2025-02-03 – 2025-03-05"
-        },
-        {
-          "kind": "Спешл",
-          "episodes": 1,
-          "minutesPerEpisode": 24,
-          "durationMinutes": null,
-          "watchDate": "2025-03-06"
-        },
-        {
-          "kind": "Сезон 2",
-          "episodes": 25,
-          "minutesPerEpisode": 24,
-          "durationMinutes": null,
-          "watchDate": "2025-03-07 – 2025-04-06"
-        }
+        { "kind": "Сезон 1", "episodes": 13, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2024-03-12 – 2024-03-20" },
+        { "kind": "Сезон 2", "episodes": 25, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2024-04-01 – 2024-04-22" }
       ]
     },
     {
-      "id": "tokyo-ghoul",
-      "title": "Токийский гуль",
-      "titleOriginal": "Tokyo Ghoul",
-      "cover": "https://picsum.photos/seed/tokyo-ghoul/300/420.jpg",
+      "id": "t5",
+      "title": "Тетрадь смерти",
+      "titleOriginal": "Death Note",
+      "cover": "https://picsum.photos/seed/deathnote/400/560",
       "type": "TV-сериал",
-      "genres": ["Драма", "Сверхъестественное", "Ужасы", "Психологическое", "Сэйнэн"],
+      "genres": ["Триллер", "Психологическое", "Детектив", "Сверхъестественное"],
+      "tier": "S",
+      "favorite": false,
+      "createdAt": "2024-04-05",
+      "entries": [
+        { "kind": "Сезон 1", "episodes": 37, "minutesPerEpisode": 23, "durationMinutes": null, "watchDate": "2024-04-07 – 2024-05-02" }
+      ]
+    },
+    {
+      "id": "t6",
+      "title": "Дорохедоро",
+      "titleOriginal": "Dorohedoro",
+      "cover": "https://picsum.photos/seed/doro/400/560",
+      "type": "ONA",
+      "genres": ["Тёмное фэнтези", "Экшен/Боевик", "Комедия", "Мистика"],
       "tier": "B",
       "favorite": false,
-      "createdAt": "2025-03-05T22:30",
+      "createdAt": "2024-05-12",
       "entries": [
-        {
-          "kind": "Сезон 1",
-          "episodes": 12,
-          "minutesPerEpisode": 24,
-          "durationMinutes": null,
-          "watchDate": "2025-02-08 – 2025-02-19"
-        },
-        {
-          "kind": "Сезон 2",
-          "episodes": 12,
-          "minutesPerEpisode": 24,
-          "durationMinutes": null,
-          "watchDate": "2025-02-21 – 2025-03-04"
-        }
-      ]
-    },
-    {
-      "id": "sao",
-      "title": "Мастера меча онлайн",
-      "titleOriginal": "Sword Art Online",
-      "cover": "https://picsum.photos/seed/sao/300/420.jpg",
-      "type": "TV-сериал",
-      "genres": ["Исекай", "Игра", "Романтика", "Фэнтези", "Сёнэн"],
-      "tier": "C",
-      "favorite": false,
-      "createdAt": "2025-04-06T12:20",
-      "entries": [
-        {
-          "kind": "Сезон 1",
-          "episodes": 25,
-          "minutesPerEpisode": 24,
-          "durationMinutes": null,
-          "watchDate": "2025-03-08 – 2025-04-05"
-        }
-      ]
-    },
-    {
-      "id": "hotd",
-      "title": "Академия мертвецов",
-      "titleOriginal": "Gakuen Mokushiroku: Highschool of the Dead",
-      "cover": "https://picsum.photos/seed/hotd/300/420.jpg",
-      "type": "TV-сериал",
-      "genres": ["Экшен/Боевик", "Ужасы", "Зомби", "Этти", "Школа"],
-      "tier": "D",
-      "favorite": false,
-      "createdAt": "2025-04-23T23:00",
-      "entries": [
-        {
-          "kind": "Сезон 1",
-          "episodes": 12,
-          "minutesPerEpisode": 24,
-          "durationMinutes": null,
-          "watchDate": "2025-04-10 – 2025-04-22"
-        }
-      ]
-    },
-    {
-      "id": "berserk-2016",
-      "title": "Берсерк",
-      "titleOriginal": "Beruseruru",
-      "cover": "https://picsum.photos/seed/berserk/300/420.jpg",
-      "type": "TV-сериал",
-      "genres": ["Экшен/Боевик", "Тёмное фэнтези", "Драма", "Сэйнэн"],
-      "tier": "E",
-      "favorite": false,
-      "createdAt": "2025-05-26T19:45",
-      "entries": [
-        {
-          "kind": "Сезон 1",
-          "episodes": 12,
-          "minutesPerEpisode": 24,
-          "durationMinutes": null,
-          "watchDate": "2025-05-02 – 2025-05-12"
-        },
-        {
-          "kind": "Сезон 2",
-          "episodes": 12,
-          "minutesPerEpisode": 24,
-          "durationMinutes": null,
-          "watchDate": "2025-05-14 – 2025-05-25"
-        }
+        { "kind": "ONA", "episodes": 12, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2024-05-14 – 2024-05-22" }
       ]
     }
   ]
