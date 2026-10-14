@@ -1,1629 +1,941 @@
-/* ============================================================
-   АНИМЕ-БУНКО — app.js (финальная версия, все исправления внутри)
-   Ядро: данные, настройки, рендер архива, drag&drop, поиск,
-   фильтры, модалки, форма тайтла, календарь, панель настроек.
-   ============================================================ */
-'use strict';
-
-/* ============================================================
-   0. КОНСТАНТЫ
-   ============================================================ */
-const TIERS = [
-  { key: 'SSS', name: 'Шедевр',      hint: 'Высшие творения' },
-  { key: 'S',   name: 'Великолепно', hint: 'Очень сильно' },
-  { key: 'A',   name: 'Отлично',     hint: 'Крепкий уровень' },
-  { key: 'B',   name: 'Хорошо',      hint: 'С удовольствием' },
-  { key: 'C',   name: 'Средне',      hint: 'Без ярких эмоций' },
-  { key: 'D',   name: 'Слабо',       hint: 'Дотянул с трудом' },
-  { key: 'E',   name: 'Плохо',       hint: 'Не зашло' },
-];
-const TIER_KEYS = TIERS.map(t => t.key);
-
-const TYPES = ['TV-сериал', 'Фильм', 'OVA', 'ONA', 'Спешл', 'TV-спешл'];
-
-const ENTRY_KINDS = [
-  'Сезон 1', 'Сезон 2', 'Сезон 3', 'Сезон 4', 'Сезон 5', 'Сезон 6',
-  'Сезон 7', 'Сезон 8', 'Фильм', 'Спешл', 'TV-спешл', 'OVA', 'ONA',
-];
-
-// Полный список жанров, отсортированный по алфавиту
-const GENRES = [
-  'Экшен/Боевик', 'Приключения', 'Комедия', 'Гэг-юмор', 'Пародия', 'Драма',
-  'Фэнтези', 'Тёмное фэнтези', 'Ужасы', 'Мистика', 'Триллер', 'Саспенс',
-  'Психологическое', 'Романтика', 'Романтическая комедия', 'Научная фантастика',
-  'Киберпанк', 'Постапокалиптика', 'Дистопия', 'Стимпанк', 'Меха', 'Космос',
-  'Повседневность', 'Спорт', 'Сверхъестественное', 'Вампиры', 'Зомби', 'Демоны',
-  'Ангелы', 'Мифология', 'Магия', 'Сверхспособности', 'Военное', 'Полиция',
-  'Детектив', 'Расследование', 'Самураи', 'Ниндзя', 'Боевые искусства',
-  'Историческое', 'Исекай', 'Обратный исекай', 'Путешествия во времени',
-  'Гарем', 'Обратный гарем', 'Этти', 'Школа', 'Университет', 'Офис/Работа',
-  'Медицина', 'Кулинария', 'Музыка', 'Идолы', 'Танцы', 'Театр', 'Игра',
-  'Видеоигры', 'Настольные игры', 'Карты', 'Гэмблинг', 'Стратегия', 'Гонки',
-  'Авто/Мото', 'Выживание', 'Природа/Экология', 'Животные', 'ИИ и роботы',
-  'Виртуальная реальность', 'Сёнэн', 'Сёдзё', 'Сэйнэн', 'Дзёсэй', 'Сёнэн-ай',
-  'Сёдзё-ай', 'Авангард', 'Детское', 'Семейное',
-].sort((a, b) => a.localeCompare(b, 'ru'));
-
-// Пресеты фоновой анимации (ключи согласованы с particles.js)
-const PRESETS = [
-  { key: 'none',          name: 'Выключено',        color: '#807d92' },
-  { key: 'sakura',        name: 'Сакура',           color: '#ff9ec6' },
-  { key: 'sakura-white',  name: 'Белая сакура',     color: '#f3eefb' },
-  { key: 'roses-red',     name: 'Красные розы',     color: '#e0244a' },
-  { key: 'petals-white',  name: 'Белые лепестки',   color: '#efe7f2' },
-  { key: 'petals-yellow', name: 'Жёлтые лепестки',  color: '#ffd44d' },
-  { key: 'snow',          name: 'Снег',             color: '#eaf6ff' },
-  { key: 'rain',          name: 'Ливень',           color: '#7fb2ff' },
-  { key: 'drizzle',       name: 'Морось',           color: '#a9c8ff' },
-  { key: 'leaves',        name: 'Осенние листья',   color: '#e8823a' },
-  { key: 'fireflies',     name: 'Светлячки',        color: '#ffe97a' },
-  { key: 'stars-fall',    name: 'Падающие звёзды',  color: '#fff3c9' },
-  { key: 'stardust',      name: 'Звёздная пыль',    color: '#cdb4ff' },
-  { key: 'bubbles',       name: 'Пузырьки',         color: '#9adcff' },
-  { key: 'confetti',      name: 'Конфетти',         color: '#ff7ab8' },
-  { key: 'feathers',      name: 'Пёрышки',          color: '#f0e8da' },
-  { key: 'hearts',        name: 'Сердечки',         color: '#ff5d7d' },
-  { key: 'butterflies',   name: 'Бабочки',          color: '#7ee3c9' },
-  { key: 'clover',        name: 'Зелёный клевер',   color: '#4ade80' },
-  { key: 'sparks',        name: 'Искры фейерверка', color: '#ffb84d' },
-  { key: 'petals-night',  name: 'Ночные лепестки',  color: '#6f8fff' },
-];
-
-const LS_DATA = 'animeArchive.data';
-const LS_SET  = 'animeArchive.settings';
-
-const DEFAULT_SETTINGS = {
-  theme: 'dark',
-  accent: '#ff4d6d',
-  animations: true,
-  viewMode: 'grid',
-  cardSize: 1,
-  columns: 'auto',
-  avgEpisode: 24,
-  avgMovie: 110,
-  calMode: 'grid',
-  particles: { preset: 'sakura', density: 40, speed: 1, size: 1 },
-};
-
-const MONTHS_NOM = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
-const MONTHS_GEN = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
-const TITLE_FORMS = ['тайтл', 'тайтла', 'тайтлов'];
-
-/* ============================================================
-   1. ХЕЛПЕРЫ
-   ============================================================ */
-const $  = (sel, root = document) => root.querySelector(sel);
-const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
-
-// Экранирование HTML-строк
-const esc = s => String(s ?? '').replace(/[&<>"']/g,
-  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-
-const uid = () => (crypto.randomUUID
-  ? crypto.randomUUID()
-  : 'id-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9));
-
-// Русская плюрализация: plural(2, ['тайтл','тайтла','тайтлов'])
-function plural(n, forms) {
-  n = Math.abs(n) % 100;
-  const d = n % 10;
-  if (n > 10 && n < 20) return forms[2];
-  if (d > 1 && d < 5) return forms[1];
-  if (d === 1) return forms[0];
-  return forms[2];
-}
-
-function deepMerge(base, extra) {
-  const out = { ...base };
-  for (const k in extra) {
-    out[k] = (extra[k] && typeof extra[k] === 'object' && !Array.isArray(extra[k]))
-      ? deepMerge(base[k] ?? {}, extra[k])
-      : extra[k];
-  }
-  return out;
-}
-
-// 'YYYY-MM-DD' -> локальная дата без сдвига таймзоны
-function parseISODate(s) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || '').trim());
-  return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
-}
-
-// Разбор даты просмотра: одиночная дата или период «дата – дата».
-// Событие привязывается к дате НАЧАЛА просмотра.
-function parseWatchDate(v) {
-  if (!v) return null;
-  const parts = String(v).split(/[–—]/).map(s => s.trim()).filter(Boolean);
-  const start = parseISODate(parts[0]);
-  if (!start) return null;
-  const end = parseISODate(parts[1] || '') || start;
-  return { start, end, label: String(v).trim() };
-}
-
-const isoDate = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-const monthKey = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-const fmtDateRu = d => `${d.getDate()} ${MONTHS_GEN[d.getMonth()]}`;
-
-function fmtMin(min) {
-  min = Math.round(Number(min) || 0);
-  if (min <= 0) return '0 мин';
-  const h = Math.floor(min / 60), m = min % 60;
-  if (!h) return `${m} мин`;
-  if (!m) return `${h} ч`;
-  return `${h} ч ${m} мин`;
-}
-
-/* ---------- Вычисление времени ---------- */
-function entryMinutes(entry, settings, titleType) {
-  const e = entry || {};
-  if (e.durationMinutes != null) return Number(e.durationMinutes) || 0;
-  const eps = Number(e.episodes) || 0;
-  if (eps > 0) return eps * (e.minutesPerEpisode ?? settings.avgEpisode);
-  if (e.kind === 'Фильм' || titleType === 'Фильм') return settings.avgMovie;
-  return 0;
-}
-const titleMinutes = (t, s) => (t.entries || []).reduce((sum, e) => sum + entryMinutes(e, s, t.type), 0);
-const totalEpisodes = t => (t.entries || []).reduce((n, e) => n + (Number(e.episodes) || 0), 0);
-
-/* ---------- Цветовые утилиты ---------- */
-function hexToRgb(hex) {
-  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return m ? { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) } : { r: 255, g: 77, b: 109 };
-}
-const rgba = (hex, a) => { const { r, g, b } = hexToRgb(hex); return `rgba(${r},${g},${b},${a})`; };
-function lighten(hex, amt) {
-  const { r, g, b } = hexToRgb(hex);
-  const f = v => Math.min(255, Math.round(v + 255 * amt));
-  return '#' + [f(r), f(g), f(b)].map(v => v.toString(16).padStart(2, '0')).join('');
-}
-
-/* ============================================================
-   2. СОСТОЯНИЕ
-   ============================================================ */
-const state = {
-  titles: [],
-  settings: deepMerge(DEFAULT_SETTINGS, {}),
-  filters: { tiers: new Set(), types: new Set(), genres: new Set(), favOnly: false },
-  search: '',
-  tab: 'archive',
-  calDate: new Date(),
-  events: new Map(),
-  form: null,
-  popCell: null,
-};
-
-// Режим владельца: admin.html (редирект) или index.html?mode=owner
-const isOwner = document.body.dataset.owner === '1'
-  || new URLSearchParams(location.search).get('mode') === 'owner';
-
-/* ---------- Мини-шина событий (для admin.js / stats.js) ---------- */
-const bus = {};
-function on(evt, fn) { (bus[evt] ||= []).push(fn); }
-function emit(evt, data) { (bus[evt] || []).forEach(fn => { try { fn(data); } catch (e) { console.error(e); } }); }
-
-/* ============================================================
-   3. ЗАГРУЗКА И СОХРАНЕНИЕ ДАННЫХ
-   ============================================================ */
-async function loadTitles() {
-  const local = readLocalTitles();
-  if (isOwner && local) { state.titles = local; return; }
-  try {
-    const res = await fetch('data.json', { cache: 'no-store' });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-    state.titles = Array.isArray(data) ? data : (data.titles || []);
-  } catch {
-    state.titles = local || [];
-    if (local) showToast('GitHub недоступен — показана локальная копия', 'info');
-  }
-}
-
-function readLocalTitles() {
-  try {
-    const raw = localStorage.getItem(LS_DATA);
-    if (!raw) return null;
-    const data = JSON.parse(raw);
-    return Array.isArray(data?.titles) ? data.titles : null;
-  } catch { return null; }
-}
-
-function saveToLocal() {
-  try {
-    localStorage.setItem(LS_DATA, JSON.stringify({
-      titles: state.titles,
-      savedAt: new Date().toISOString(),
-    }));
-    emit('local-saved');
-  } catch (e) {
-    showToast('Не удалось сохранить в localStorage: ' + e.message, 'err');
-  }
-}
-
-let autosaveTimer = null;
-function scheduleAutosave() {
-  if (!isOwner) return;                       // публичный режим каталог не меняет
-  clearTimeout(autosaveTimer);
-  autosaveTimer = setTimeout(saveToLocal, 500);
-}
-
-async function forceRemoteLoad() {
-  const res = await fetch('data.json', { cache: 'no-store' });
-  if (!res.ok) throw new Error('HTTP ' + res.status);
-  const data = await res.json();
-  state.titles = Array.isArray(data) ? data : (data.titles || []);
-  renderAll();
-  showToast('Данные заново загружены с GitHub', 'ok');
-}
-
-/* ---------- Настройки ---------- */
-function loadSettings() {
-  try {
-    const raw = localStorage.getItem(LS_SET);
-    if (raw) state.settings = deepMerge(DEFAULT_SETTINGS, JSON.parse(raw));
-  } catch { /* повреждены — используем дефолт */ }
-}
-
-function persistSettings() {
-  try { localStorage.setItem(LS_SET, JSON.stringify(state.settings)); } catch { /* ignore */ }
-}
-
-/* ============================================================
-   4. ПРИМЕНЕНИЕ НАСТРОЕК (мгновенно)
-   ============================================================ */
-function applySettings() {
-  const s = state.settings;
-  const root = document.documentElement;
-
-  root.dataset.theme = s.theme;
-  root.classList.toggle('no-anim', !s.animations);
-
-  root.style.setProperty('--accent', s.accent);
-  root.style.setProperty('--accent-2', lighten(s.accent, 0.16));
-  root.style.setProperty('--accent-soft', rgba(s.accent, 0.13));
-
-  const sections = $('#tier-sections');
-  if (sections) {
-    sections.style.setProperty('--card-target', Math.round(150 * (s.cardSize || 1)) + 'px');
-    sections.style.setProperty('--cols-fix', String(s.columns));
-  }
-
-  if (window.ArchiveParticles) ArchiveParticles.apply(s);
-  emit('settings-changed', s);
-}
-
-function setSetting(key, value) {
-  state.settings[key] = value;
-  persistSettings();
-  applySettings();
-}
-
-/* ============================================================
-   5. ФИЛЬТРАЦИЯ И ПОИСК
-   ============================================================ */
-function matchesFilters(t) {
-  const f = state.filters;
-  if (f.tiers.size && !f.tiers.has(t.tier)) return false;
-  if (f.types.size && !f.types.has(t.type)) return false;
-  if (f.genres.size && !(t.genres || []).some(g => f.genres.has(g))) return false;
-  if (f.favOnly && !t.favorite) return false;
-  if (state.search) {
-    const q = state.search.toLowerCase();
-    const hay = (t.title + ' ' + (t.titleOriginal || '')).toLowerCase();
-    if (!hay.includes(q)) return false;
-  }
-  return true;
-}
-
-const visibleTitles = () => state.titles.filter(matchesFilters);
-const hasActiveFilters = () =>
-  state.filters.tiers.size || state.filters.types.size || state.filters.genres.size || state.filters.favOnly;
-
-/* ============================================================
-   6. ОБЛОЖКИ
-   ============================================================ */
-function coverHTML(t, size) {
-  const cls = size === 'lg' ? 'cover-fallback cover-fallback--lg' : 'cover-fallback cover-fallback--sm';
-  if (!t.cover) {
-    return `<div class="${cls}" data-tier="${esc(t.tier)}">${esc((t.title || '?').trim()[0] || '?')}</div>`;
-  }
-  return `<img class="cover-img" src="${esc(t.cover)}" alt="" loading="lazy" draggable="false">`;
-}
-
-// Плавное появление картинок + заглушка при ошибке загрузки
-function hydrateImages(root) {
-  $$('img.cover-img', root).forEach(img => {
-    img.addEventListener('load', () => img.classList.add('is-loaded'), { once: true });
-    img.addEventListener('error', () => {
-      const holder = img.closest('.title-card, .recent-card, .tm-cover');
-      const isBig = !!img.closest('.tm-cover');
-      const fb = document.createElement('div');
-      fb.className = 'cover-fallback' + (isBig ? ' cover-fallback--lg' : ' cover-fallback--sm');
-      fb.dataset.tier = holder?.dataset.tier || 'S';
-      fb.textContent = (holder?.dataset.name || '?').trim()[0] || '?';
-      img.replaceWith(fb);
-    }, { once: true });
-    if (img.complete && img.naturalWidth > 0) img.classList.add('is-loaded');
-  });
-}
-
-/* ============================================================
-   7. ЛЕНТА «ПОСЛЕДНИЕ ДОБАВЛЕННЫЕ»
-   ============================================================ */
-function renderRecentStrip() {
-  const strip = $('#recent-strip');
-  const recent = [...state.titles]
-    .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
-    .slice(0, 10);
-
-  $('#recent-count').textContent = recent.length ? `${recent.length} из ${state.titles.length}` : '';
-
-  strip.innerHTML = recent.map(t => `
-    <div class="recent-card" data-id="${esc(t.id)}" data-tier="${esc(t.tier)}" data-name="${esc(t.title)}" title="${esc(t.title)}">
-      <div class="recent-card__cover">${coverHTML(t, 'sm')}</div>
-      <span class="recent-card__stripe"></span>
-      <p class="recent-card__title">${esc(t.title)}</p>
-    </div>`).join('');
-  hydrateImages(strip);
-}
-
-/* ============================================================
-   8. ПАНЕЛЬ ТИРОВ
-   ============================================================ */
-function renderTierBar() {
-  const total = state.titles.length;
-  $('#tier-bar').innerHTML = TIERS.map(({ key, name }, i) => {
-    const count = state.titles.filter(t => t.tier === key).length;
-    const pct = total ? Math.round(count / total * 100) : 0;
-    const on = state.filters.tiers.has(key) ? ' is-on' : '';
-    return `
-      <button class="tier-chip${on}" data-tier="${key}" data-tier-filter="${key}"
-              title="${esc(name)} — фильтр" aria-label="Тир ${key}: ${count}, ${pct}%">
-        <span class="tier-letter" data-tier="${key}" style="--letter-delay:${(-i * 0.9).toFixed(1)}s">${key}</span>
-        <span class="tier-chip__stats">
-          <span class="tier-chip__count">${count}</span>
-          <span class="tier-chip__pct">${pct}%</span>
-        </span>
-      </button>`;
-  }).join('');
-}
-
-/* ============================================================
-   9. КАРТОЧКИ (3 вида)
-   ============================================================ */
-function titleCardHTML(t, view) {
-  const s = state.settings;
-  const min = titleMinutes(t, s);
-  const eps = totalEpisodes(t);
-  const timeIcon = '<svg class="icon"><use href="#i-clock"/></svg>';
-  const meta = eps ? `${esc(t.type)} · ${eps} эп.` : esc(t.type);
-  const badges = `
-    <div class="title-card__badges">
-      ${t.tier === 'SSS' ? '<span class="badge badge--crown" title="Шедевр"><svg class="icon"><use href="#i-crown"/></svg></span>' : ''}
-      ${t.favorite ? '<span class="badge badge--heart" title="Любимый тайтл"><svg class="icon"><use href="#i-heart"/></svg></span>' : ''}
-    </div>`;
-  const time = `<span class="title-card__time">${timeIcon}${fmtMin(min)}</span>`;
-  const attrs = `data-id="${esc(t.id)}" data-tier="${esc(t.tier)}" data-name="${esc(t.title)}"`;
-
-  if (view === 'compact') {
-    return `
-      <article class="title-card title-card--compact" ${attrs}>
-        <div class="title-card__cover">${coverHTML(t, 'sm')}</div>
-        <div class="title-card__body">
-          <h4 class="title-card__title">${esc(t.title)}</h4>
-          <span class="title-card__meta">${meta}</span>
-          ${time}
-        </div>
-      </article>`;
-  }
-  if (view === 'list') {
-    return `
-      <article class="title-card title-card--list" ${attrs}>
-        <div class="title-card__cover">${coverHTML(t, 'sm')}${badges}</div>
-        <div class="title-card__body">
-          <h4 class="title-card__title">${esc(t.title)}</h4>
-          <span class="title-card__meta">${meta}</span>
-          ${time}
-        </div>
-      </article>`;
-  }
-  return `
-    <article class="title-card" ${attrs}>
-      <div class="title-card__cover">${coverHTML(t, 'sm')}${badges}</div>
-      <div class="title-card__body">
-        <h4 class="title-card__title">${esc(t.title)}</h4>
-        <span class="title-card__meta">${meta}</span>
-        ${time}
-      </div>
-    </article>`;
-}
-
-/* ============================================================
-   10. СЕКЦИИ ТИРОВ + DRAG & DROP
-   ============================================================ */
-function renderTierSections() {
-  const s = state.settings;
-  const wrap = $('#tier-sections');
-  const list = visibleTitles();
-  const anyFilter = hasActiveFilters() || !!state.search;
-  const target = Math.round(150 * (s.cardSize || 1));
-
-  wrap.innerHTML = TIERS.map(({ key, name, hint }, i) => {
-    if (state.filters.tiers.size && !state.filters.tiers.has(key)) return '';
-
-    const items = list.filter(t => t.tier === key);
-    const totalMin = items.reduce((sum, t) => sum + titleMinutes(t, s), 0);
-    const cols = s.columns !== 'auto'
-      ? `repeat(${s.columns}, minmax(0,1fr))`
-      : `repeat(auto-fill, minmax(${target}px, 1fr))`;
-
-    const cards = items.length
-      ? `<div class="cards${s.columns !== 'auto' ? ' cards--fixed' : ''}" data-tier="${key}" style="grid-template-columns:${cols};">
-           ${items.map(t => titleCardHTML(t, s.viewMode)).join('')}
-         </div>`
-      : `<div class="cards" data-tier="${key}" style="grid-template-columns:1fr;">
-           <p class="empty-note" style="padding:24px 14px;text-align:center;border:1.5px dashed var(--border);border-radius:12px;">
-             ${anyFilter ? 'По текущему фильтру здесь пусто' : 'Пока пусто — можно перетащить карточку сюда'}
-           </p>
-         </div>`;
-
-    return `
-      <section class="tier-section" data-tier="${key}">
-        <header class="tier-section__head">
-          <span class="tier-letter" data-tier="${key}" style="--letter-delay:${(-i * 1.1).toFixed(1)}s">${key}</span>
-          <div class="tier-section__caption">
-            <div class="tier-section__name">${esc(name)}</div>
-            <div class="tier-section__hint">${esc(hint)}</div>
-          </div>
-          <div class="tier-section__meta">
-            ${items.length} ${plural(items.length, TITLE_FORMS)} · ${fmtMin(totalMin)}
-          </div>
-        </header>
-        ${cards}
-      </section>`;
-  }).join('');
-
-  hydrateImages(wrap);
-
-  const es = $('#empty-state');
-  es.hidden = list.length !== 0;
-  if (list.length === 0) {
-    if (!state.titles.length) {
-      $('.empty-title', es).textContent = 'Каталог пуст';
-      $('.empty-note', es).textContent = 'В data.json пока нет тайтлов';
-    } else {
-      $('.empty-title', es).textContent = 'Ничего не найдено';
-      $('.empty-note', es).textContent = 'Попробуйте изменить запрос или сбросить фильтры';
-    }
-  }
-
-  updateToolbar();
-  if (isOwner && typeof Sortable !== 'undefined') initSortable();
-}
-
-function updateToolbar() {
-  const shown = visibleTitles().length;
-  const total = state.titles.length;
-  $('#toolbar-count').textContent = (state.search || hasActiveFilters())
-    ? `Показано ${shown} из ${total}`
-    : `Всего: ${total} ${plural(total, TITLE_FORMS)}`;
-  $$('#view-switch .view-btn').forEach(b =>
-    b.classList.toggle('is-active', b.dataset.view === state.settings.viewMode));
-}
-
-/* ---------- SortableJS ---------- */
-function initSortable() {
-  $$('#tier-sections .cards').forEach(grid => {
-    new Sortable(grid, {
-      group: 'tiers',
-      animation: 220,
-      ghostClass: 'sortable-ghost',
-      chosenClass: 'sortable-chosen',
-      dragClass: 'sortable-drag',
-      delay: 140,
-      delayOnTouchOnly: true,       // на таче — задержка, чтобы не мешать скроллу
-      fallbackTolerance: 4,
-      onMove(evt) {
-        $$('.tier-section.is-drop').forEach(x => x.classList.remove('is-drop'));
-        evt.to?.closest('.tier-section')?.classList.add('is-drop');
-      },
-      onEnd(evt) {
-        $$('.tier-section.is-drop').forEach(x => x.classList.remove('is-drop'));
-        handleDrop(evt);
-      },
-    });
-  });
-}
-
-/* ---------- Завершение перетаскивания ---------- */
-function handleDrop(evt) {
-  const item = evt.item;
-  const id = item?.dataset.id;
-  const sec = item?.closest('.tier-section');
-  if (!id || !sec) return;
-
-  const t = state.titles.find(x => x.id === id);
-  if (!t) return;
-
-  const oldTier = t.tier;
-  const toTier = sec.dataset.tier;
-
-  // DOM-порядок видимых карточек секции-приёмника
-  const ids = $$('.title-card', sec).map(el => el.dataset.id);
-  const pos = ids.indexOf(id);
-  const nextId = pos >= 0 && pos < ids.length - 1 ? ids[pos + 1] : null;
-
-  state.titles = state.titles.filter(x => x.id !== id);
-  t.tier = toTier;
-
-  let insertIdx;
-  const nextT = nextId ? state.titles.find(x => x.id === nextId) : null;
-  if (nextT) {
-    insertIdx = state.titles.indexOf(nextT);                 // перед следующей видимой
-  } else {
-    let lastIdx = -1;                                        // после последнего тайтла тира
-    state.titles.forEach((x, i) => { if (x.tier === toTier) lastIdx = i; });
-    if (lastIdx >= 0) insertIdx = lastIdx + 1;
-    else {
-      const rank = TIER_KEYS.indexOf(toTier);                // перед тиром ниже рангом
-      insertIdx = state.titles.findIndex(x => TIER_KEYS.indexOf(x.tier) > rank);
-      if (insertIdx < 0) insertIdx = state.titles.length;
-    }
-  }
-  state.titles.splice(insertIdx, 0, t);
-
-  // Смена тира: перерисовываем карточку на месте + плавная «перекраска»
-  if (oldTier !== toTier) {
-    item.outerHTML = titleCardHTML(t, state.settings.viewMode);
-    hydrateImages(sec);
-    const fresh = sec.querySelector(`.title-card[data-id="${CSS.escape(id)}"]`);
-    fresh?.animate(
-      [{ filter: 'brightness(1.9) saturate(1.6)' }, { filter: 'brightness(1) saturate(1)' }],
-      { duration: 700, easing: 'cubic-bezier(.2,.8,.3,1)' }
-    );
-  }
-
-  renderTierBar();
-  updateSectionMetas();
-  scheduleAutosave();
-  emit('data-changed');
-}
-
-function updateSectionMetas() {
-  const s = state.settings;
-  $$('#tier-sections .tier-section').forEach(sec => {
-    const items = state.titles.filter(t => t.tier === sec.dataset.tier);
-    const total = items.reduce((sum, t) => sum + titleMinutes(t, s), 0);
-    const meta = $('.tier-section__meta', sec);
-    if (meta) meta.textContent = `${items.length} ${plural(items.length, TITLE_FORMS)} · ${fmtMin(total)}`;
-  });
-}
-
-/* ============================================================
-   11. МОДАЛКИ (закрытие — только крестик или Esc)
-   ============================================================ */
-function openModal(el) {
-  el.classList.add('is-open');
-  el.setAttribute('aria-hidden', 'false');
-  document.body.style.overflow = 'hidden';
-  $('.modal-close', el)?.focus({ preventScroll: true });
-}
-function closeModal(el) {
-  el.classList.remove('is-open');
-  el.setAttribute('aria-hidden', 'true');
-  if (!$('.modal.is-open')) document.body.style.overflow = '';
-}
-
-/* ---------- Модалка тайтла ---------- */
-function openTitleModal(id) {
-  const t = state.titles.find(x => x.id === id);
-  if (!t) return;
-  const s = state.settings;
-  const total = titleMinutes(t, s);
-  const body = $('#modal-title-body');
-
-  const entriesHTML = (t.entries || []).map(e => {
-    const mins = entryMinutes(e, s, t.type);
-    const eps = Number(e.episodes) || 0;
-    const epsInfo = eps
-      ? `<span class="tm-entry__eps">${eps} эп. × ${e.minutesPerEpisode ?? s.avgEpisode} мин</span>`
-      : `<span class="tm-entry__eps">фильм</span>`;
-    const pd = parseWatchDate(e.watchDate);
-    return `
-      <div class="tm-entry" data-tier="${esc(t.tier)}">
-        <span class="tm-entry__kind">${esc(e.kind)}</span>
-        <span class="tm-entry__date">${pd ? esc(e.watchDate) : 'дата не указана'}</span>
-        ${epsInfo}
-        <span class="tm-entry__time"><svg class="icon"><use href="#i-clock"/></svg>${fmtMin(mins)}</span>
-      </div>`;
-  }).join('');
-
-  body.innerHTML = `
-    <div class="tm-head">
-      <div class="tm-cover" data-tier="${esc(t.tier)}" data-name="${esc(t.title)}">${coverHTML(t, 'lg')}</div>
-      <div class="tm-info">
-        <div class="tm-tier" data-tier="${esc(t.tier)}">
-          <span class="tier-letter" data-tier="${esc(t.tier)}" style="--letter-delay:-1.2s">${esc(t.tier)}</span>
-          <span>${esc(TIERS.find(x => x.key === t.tier)?.name || '')}</span>
-        </div>
-        <h3 class="tm-title" id="modal-title-heading">${esc(t.title)}</h3>
-        ${t.titleOriginal ? `<p class="tm-original">${esc(t.titleOriginal)}</p>` : ''}
-        <div class="tm-tags">
-          <span class="tm-tag tm-tag--type">${esc(t.type)}</span>
-          ${t.favorite ? `<span class="tm-tag tm-tag--fav"><svg class="icon"><use href="#i-heart"/></svg>Любимый</span>` : ''}
-          ${(t.genres || []).map(g => `<span class="tm-tag">${esc(g)}</span>`).join('')}
-        </div>
-      </div>
-    </div>
-    <div class="tm-subhead">Составные части</div>
-    ${entriesHTML || '<p class="empty-note">Составные части не добавлены</p>'}
-    <div class="tm-total">
-      <span>Общее время просмотра</span>
-      <span><svg class="icon"><use href="#i-clock"/></svg>${fmtMin(total)}</span>
-    </div>
-    ${isOwner ? `
-      <div class="tm-actions">
-        <button class="btn btn--accent" data-act="edit">
-          <svg class="icon"><use href="#i-edit"/></svg>Редактировать
-        </button>
-        <button class="btn btn--danger" data-act="del">
-          <svg class="icon"><use href="#i-trash"/></svg>Удалить
-        </button>
-      </div>` : ''}
-  `;
-  hydrateImages(body);
-  body.dataset.titleId = id;
-  openModal($('#modal-title'));
-}
-
-// Кнопки модалки: редактировать / двухшаговое удаление
- $('#modal-title-body').addEventListener('click', e => {
-  const btn = e.target.closest('[data-act]');
-  if (!btn) return;
-  const id = $('#modal-title-body').dataset.titleId;
-  if (btn.dataset.act === 'edit') {
-    closeModal($('#modal-title'));
-    openForm(id, { backToTitle: true });
-  }
-  if (btn.dataset.act === 'del') {
-    if (btn.dataset.armed) {
-      state.titles = state.titles.filter(x => x.id !== id);
-      closeModal($('#modal-title'));
-      renderAll();
-      scheduleAutosave();
-      emit('data-changed');
-      showToast('Тайтл удалён из архива', 'ok');
-    } else {
-      btn.dataset.armed = '1';
-      btn.textContent = 'Точно удалить?';
-      setTimeout(() => {
-        if (btn.isConnected) {
-          delete btn.dataset.armed;
-          btn.innerHTML = '<svg class="icon"><use href="#i-trash"/></svg>Удалить';
-        }
-      }, 3000);
-    }
-  }
-});
-
-/* ============================================================
-   12. ФОРМА ДОБАВЛЕНИЯ / РЕДАКТИРОВАНИЯ (владелец)
-   ============================================================ */
-function openForm(editId = null, opts = {}) {
-  const editing = editId ? state.titles.find(x => x.id === editId) : null;
-  state.form = {
-    editingId: editId,
-    backToTitle: !!opts.backToTitle,
-    genres: new Set(editing?.genres || []),
-    genreQuery: '',
+/* =====================================================================
+   app.js — логика публичной части «Аниме-Архив»
+   Загружает data.json, рендерит тиры, карточки, модалку, календарь,
+   настройки, drag&drop, фильтры. Работает и в owner-режиме (admin.html).
+   ===================================================================== */
+
+(function () {
+  'use strict';
+
+  /* ==================== Состояние ==================== */
+  const LS = {
+    data:   'anime-archive:data',
+    settings: 'anime-archive:settings',
+    github: 'anime-archive:github'
   };
 
-  const s = state.settings;
-  const t = editing || { title: '', titleOriginal: '', cover: '', type: 'TV-сериал', tier: 'A', favorite: false, entries: [] };
-  const defaultEntries = (t.entries && t.entries.length)
-    ? t.entries
-    : [{ kind: t.type === 'Фильм' ? 'Фильм' : 'Сезон 1', episodes: t.type === 'Фильм' ? null : 12, minutesPerEpisode: null, durationMinutes: null, watchDate: '' }];
-
-  $('#modal-form-body').innerHTML = `
-    <h3 class="form-title" id="form-heading">${editing ? 'Редактировать тайтл' : 'Добавить тайтл'}</h3>
-    <div class="form-grid">
-      <div class="form-field form-field--full">
-        <label class="form-label" for="f-title">Название (рус.) *</label>
-        <input class="form-input" id="f-title" value="${esc(t.title)}" placeholder="Например: Стальной алхимик: Братство" maxlength="120">
-      </div>
-      <div class="form-field form-field--full">
-        <label class="form-label" for="f-original">Оригинальное название</label>
-        <input class="form-input" id="f-original" value="${esc(t.titleOriginal || '')}" placeholder="Hagane no Renkinjutsushi" maxlength="120">
-      </div>
-      <div class="form-field">
-        <label class="form-label" for="f-type">Тип тайтла</label>
-        <select class="form-select" id="f-type">
-          ${TYPES.map(x => `<option value="${esc(x)}" ${x === t.type ? 'selected' : ''}>${esc(x)}</option>`).join('')}
-        </select>
-      </div>
-      <div class="form-field">
-        <label class="form-label">Тир</label>
-        <div class="chip-row" id="f-tier">
-          ${TIER_KEYS.map(k => `
-            <button type="button" class="chip${k === t.tier ? ' is-on' : ''}" data-tier="${k}" data-tier-pick="${k}"
-              title="${esc(TIERS.find(x => x.key === k).name)}">${k}</button>`).join('')}
-        </div>
-      </div>
-      <div class="form-field form-field--full">
-        <label class="form-label" for="f-cover">Обложка (URL)</label>
-        <div style="display:flex;gap:10px;align-items:flex-start;">
-          <input class="form-input" id="f-cover" value="${esc(t.cover || '')}" placeholder="https://…/poster.jpg" style="flex:1;">
-          <img id="f-cover-preview" alt="" hidden
-               style="width:56px;height:78px;object-fit:cover;border-radius:9px;border:1px solid var(--border);flex:none;">
-        </div>
-      </div>
-      <div class="form-field form-field--full">
-        <label class="check-row">
-          <input type="checkbox" id="f-fav" ${t.favorite ? 'checked' : ''}>
-          Любимый тайтл
-        </label>
-      </div>
-      <div class="form-field form-field--full">
-        <label class="form-label">Жанры <span id="f-genres-count" style="text-transform:none;"></span></label>
-        <div class="gsearch">
-          <input class="form-input" id="f-genre-search" placeholder="Поиск жанра…" autocomplete="off">
-        </div>
-        <div class="glist" id="f-genre-list"></div>
-      </div>
-      <div class="form-field form-field--full">
-        <label class="form-label">Составные части (в порядке просмотра)</label>
-        <div class="entries-editor" id="f-entries">
-          ${defaultEntries.map(e => entryRowHTML(e)).join('')}
-        </div>
-        <div style="display:flex;gap:10px;align-items:center;margin-top:6px;flex-wrap:wrap;">
-          <button type="button" class="btn btn--ghost btn--small" id="f-add-entry">
-            <svg class="icon"><use href="#i-plus"/></svg>Добавить часть
-          </button>
-          <span class="form-hint" style="margin:0;">Итого: <b id="f-total">—</b></span>
-        </div>
-        <p class="form-hint">Дата — «2025-05-10» или период «2025-05-01 – 2025-05-20». У фильмов указывается общая длительность; у сериалов — число серий (минуты на серию можно переопределить).</p>
-      </div>
-    </div>
-    <div class="form-actions">
-      <button class="btn btn--ghost" data-act="cancel">Отмена</button>
-      <button class="btn btn--accent" data-act="save">
-        <svg class="icon"><use href="#i-save"/></svg>${editing ? 'Сохранить' : 'Добавить в архив'}
-      </button>
-    </div>`;
-
-  renderGenreList();
-  recalcFormTotal();
-  coverPreview();
-  openModal($('#modal-form'));
-  setTimeout(() => $('#f-title')?.focus(), 120);
-}
-
-/* ---------- Строка составной части ---------- */
-function entryRowHTML(e = {}) {
-  const isFilm = e.kind === 'Фильм';
-  const opts = ENTRY_KINDS.map(k =>
-    `<option value="${esc(k)}" ${k === e.kind ? 'selected' : ''}>${esc(k)}</option>`).join('');
-  return `
-    <div class="entry-row">
-      <div class="entry-row__num">
-        <label class="form-label">Часть</label>
-        <select class="form-select ent-kind">${opts}</select>
-      </div>
-      <div class="entry-row__num">
-        <label class="form-label">Серии</label>
-        <input type="number" class="form-input ent-eps" min="0" max="5000"
-               value="${e.episodes ?? ''}" placeholder="${isFilm ? '—' : '12'}" ${isFilm ? 'disabled' : ''}>
-      </div>
-      <div class="entry-row__num">
-        <label class="form-label ent-min-label">${isFilm ? 'Длительность, мин' : 'Мин/серия'}</label>
-        <input type="number" class="form-input ent-min" min="1" max="2000"
-               value="${isFilm ? (e.durationMinutes ?? '') : (e.minutesPerEpisode ?? '')}"
-               placeholder="${isFilm ? state.settings.avgMovie + ' (среднее)' : state.settings.avgEpisode + ' (среднее)'}">
-      </div>
-      <div class="entry-row__num">
-        <label class="form-label">Дата просмотра</label>
-        <input type="text" class="form-input ent-date" value="${esc(e.watchDate || '')}"
-               placeholder="2025-05-01 – 2025-05-20">
-      </div>
-      <button type="button" class="btn-icon-del" title="Удалить часть" aria-label="Удалить часть">
-        <svg class="icon"><use href="#i-trash"/></svg>
-      </button>
-    </div>`;
-}
-
-/* ---------- Мультиселект жанров ---------- */
-function renderGenreList() {
-  const q = state.form.genreQuery.trim().toLowerCase();
-  const list = GENRES.filter(g => !q || g.toLowerCase().includes(q));
-  $('#f-genre-list').innerHTML = list.length
-    ? list.map(g => `
-        <button type="button" class="chip chip--genre${state.form.genres.has(g) ? ' is-on' : ''}" data-genre="${esc(g)}">
-          ${state.form.genres.has(g) ? '<svg class="icon"><use href="#i-check"/></svg>' : ''}${esc(g)}
-        </button>`).join('')
-    : '<p class="glist-empty">Жанр не найден</p>';
-  const n = state.form.genres.size;
-  $('#f-genres-count').textContent = n ? `— выбрано: ${n}` : '';
-}
-
-/* ---------- Сбор данных строки + итог ---------- */
-function collectEntryFromRow(row) {
-  const kind = $('.ent-kind', row).value;
-  const isFilm = kind === 'Фильм';
-  const epsRaw = $('.ent-eps', row).value;
-  const minRaw = $('.ent-min', row).value;
-  return {
-    kind,
-    episodes: isFilm ? null : (epsRaw === '' ? null : Number(epsRaw)),
-    minutesPerEpisode: isFilm ? null : (minRaw === '' ? null : Number(minRaw)),
-    durationMinutes: isFilm ? (minRaw === '' ? null : Number(minRaw)) : null,
-    watchDate: $('.ent-date', row).value.trim(),
+  const DEFAULT_SETTINGS = {
+    theme: 'dark',
+    accent: '#ff5f9e',
+    animations: true,
+    parallax: true,
+    preset: 'sakura',
+    density: 35,
+    speed: 1,
+    size: 1,
+    viewMode: 'grid',
+    cardSize: 1,
+    columns: 9,
+    avgEpisode: 24,
+    avgMovie: 110
   };
-}
 
-function recalcFormTotal() {
-  const s = state.settings;
-  const type = $('#f-type')?.value || 'TV-сериал';
-  const total = $$('#f-entries .entry-row').reduce(
-    (sum, row) => sum + entryMinutes(collectEntryFromRow(row), s, type), 0);
-  const el = $('#f-total');
-  if (el) el.textContent = fmtMin(total);
-}
+  const TIERS = ['SSS','S','A','B','C','D','E'];
+  const TIER_LABELS = {
+    SSS: 'Шедевр', S: 'Великолепно', A: 'Отлично', B: 'Хорошо',
+    C: 'Средне', D: 'Слабо', E: 'Плохо'
+  };
 
-function coverPreview() {
-  const url = $('#f-cover')?.value.trim();
-  const img = $('#f-cover-preview');
-  if (!url) { img.hidden = true; return; }
-  img.hidden = false;
-  img.onerror = () => { img.hidden = true; };
-  img.src = url;
-}
+  const ALL_GENRES = [
+    'Авангард','Авто/Мото','Ангелы','Боевые искусства','Вампиры','Видеоигры',
+    'Виртуальная реальность','Военное','Выживание','Гарем','Гэг-юмор','Гэмблинг',
+    'Гонки','Демоны','Детектив','Детское','Дистопия','Драма','Дзёсэй','Животные',
+    'Зомби','Игра','Идолы','ИИ и роботы','Исекай','Историческое','Карты','Киберпанк',
+    'Комедия','Космос','Кулинария','Магия','Медицина','Меха','Мистика','Мифология',
+    'Музыка','Настольные игры','Научная фантастика','Ниндзя','Обратный гарем',
+    'Обратный исекай','Офис/Работа','Пародия','Повседневность','Полиция',
+    'Постапокалиптика','Приключения','Природа/Экология','Психологическое',
+    'Путешествия во времени','Расследование','Романтика','Романтическая комедия',
+    'Самураи','Саспенс','Сверхспособности','Сверхъестественное','Семейное',
+    'Сёнэн','Сёнэн-ай','Сёдзё','Сёдзё-ай','Спорт','Стимпанк','Стратегия','Сэйнен',
+    'Танцы','Театр','Тёмное фэнтези','Триллер','Ужасы','Университет','Фэнтези',
+    'Школа','Экшен/Боевик','Этти'
+  ].sort((a, b) => a.localeCompare(b, 'ru'));
 
-/* ---------- События формы ---------- */
-const formBody = $('#modal-form-body');
+  /* ==================== DOM-хелперы ==================== */
+  const $  = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
 
-formBody.addEventListener('click', e => {
-  const tierPick = e.target.closest('[data-tier-pick]');
-  if (tierPick) {
-    $$('#f-tier .chip').forEach(c => c.classList.toggle('is-on', c === tierPick));
-    return;
-  }
-  const genreChip = e.target.closest('[data-genre]');
-  if (genreChip) {
-    const g = genreChip.dataset.genre;
-    state.form.genres.has(g) ? state.form.genres.delete(g) : state.form.genres.add(g);
-    renderGenreList();
-    return;
-  }
-  const del = e.target.closest('.btn-icon-del');
-  if (del) { del.closest('.entry-row').remove(); recalcFormTotal(); return; }
-  if (e.target.closest('#f-add-entry')) {
-    const type = $('#f-type').value;
-    const lastKind = $$('#f-entries .ent-kind').pop()?.value;
-    let kind = 'Сезон 2';
-    if (type === 'Фильм') kind = 'Фильм';
-    else if (/^Сезон \d+$/.test(lastKind || '')) {
-      kind = 'Сезон ' + (Number(lastKind.replace(/\D/g, '')) + 1);
-    } else if (lastKind) kind = lastKind;
-    $('#f-entries').insertAdjacentHTML('beforeend', entryRowHTML({ kind, episodes: kind === 'Фильм' ? null : 12 }));
-    recalcFormTotal();
-    return;
-  }
-  const act = e.target.closest('[data-act]')?.dataset.act;
-  if (act === 'cancel') {
-    closeModal($('#modal-form'));
-    if (state.form?.backToTitle && state.form.editingId) openTitleModal(state.form.editingId);
-  }
-  if (act === 'save') saveForm();
-});
+  /* ==================== Утилиты ==================== */
+  const fmtDateRu = d => {
+    if (!d) return '';
+    const m = String(d).match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return d;
+    return `${m[3]}.${m[2]}.${m[1]}`;
+  };
+  const MONTHS_RU = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+  const DOW_RU = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
 
-formBody.addEventListener('input', e => {
-  if (e.target.id === 'f-cover') coverPreview();
-  if (e.target.id === 'f-genre-search') {
-    state.form.genreQuery = e.target.value;
-    renderGenreList();
-  }
-  if (e.target.closest('.entry-row')) recalcFormTotal();
-});
+  const fmtMinutes = min => {
+    min = Math.round(min);
+    if (min < 60) return min + ' мин';
+    const h = Math.floor(min / 60), m = min % 60;
+    if (h < 24) return h + ' ч' + (m ? ' ' + m + ' мин' : '');
+    const d = Math.floor(h / 24);
+    return d + ' д ' + (h % 24) + ' ч';
+  };
 
-formBody.addEventListener('change', e => {
-  const kindSel = e.target.closest('.ent-kind');
-  if (kindSel) {
-    const row = kindSel.closest('.entry-row');
-    const isFilm = kindSel.value === 'Фильм';
-    const eps = $('.ent-eps', row), min = $('.ent-min', row);
-    eps.disabled = isFilm;
-    eps.placeholder = isFilm ? '—' : '12';
-    if (isFilm) eps.value = '';
-    $('.ent-min-label', row).textContent = isFilm ? 'Длительность, мин' : 'Мин/серия';
-    min.placeholder = isFilm
-      ? state.settings.avgMovie + ' (среднее)'
-      : state.settings.avgEpisode + ' (среднее)';
-    recalcFormTotal();
-  }
-});
+  /* ==================== Состояние приложения ==================== */
+  let data = { titles: [] };
+  let settings = Object.assign({}, DEFAULT_SETTINGS);
+  let filters = { q: '', tier: '', type: '', genre: '', fav: false };
+  let sortables = [];
+  let currentCalDate = new Date();
+  let calMode = 'grid';
+  let activeModalId = null;
 
-/* ---------- Сохранение формы ---------- */
-function saveForm() {
-  const title = $('#f-title').value.trim();
-  if (!title) {
-    showToast('Укажите название тайтла', 'err');
-    $('#f-title').focus();
-    return;
-  }
+  const IS_OWNER = document.body.dataset.owner === 'true' ||
+    new URLSearchParams(location.search).get('mode') === 'owner';
 
-  const entries = $$('#f-entries .entry-row').map(collectEntryFromRow);
-  const tier = $('#f-tier .chip.is-on')?.dataset.tierPick || 'A';
-  const cover = $('#f-cover').value.trim();
-
-  if (state.form.editingId) {
-    const t = state.titles.find(x => x.id === state.form.editingId);
-    if (t) Object.assign(t, {
-      title, titleOriginal: $('#f-original').value.trim(), cover,
-      type: $('#f-type').value, tier, favorite: $('#f-fav').checked,
-      genres: [...state.form.genres], entries,
-    });
-    showToast('Изменения сохранены', 'ok');
-  } else {
-    const now = new Date();
-    state.titles.push({
-      id: uid(), title, titleOriginal: $('#f-original').value.trim(), cover,
-      type: $('#f-type').value, tier, favorite: $('#f-fav').checked,
-      genres: [...state.form.genres], entries,
-      createdAt: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
-    });
-    showToast('Тайтл добавлен в архив', 'ok');
-  }
-
-  const backId = state.form.editingId;
-  closeModal($('#modal-form'));
-  renderAll();
-  scheduleAutosave();
-  emit('data-changed');
-  if (state.form?.backToTitle && backId) openTitleModal(backId);
-}
-
-/* ============================================================
-   13. КАЛЕНДАРЬ
-   ============================================================ */
-function buildEvents() {
-  const map = new Map();
-  for (const t of state.titles) {
-    for (const e of (t.entries || [])) {
-      const pd = parseWatchDate(e.watchDate);
-      if (!pd) continue;
-      const key = isoDate(pd.start);
-      if (!map.has(key)) map.set(key, []);
-      map.get(key).push({ title: t, entry: e });
-    }
-  }
-  state.events = map;
-}
-
-function renderCalendar() {
-  hideCalPop();
-  const d = state.calDate;
-  const y = d.getFullYear(), m = d.getMonth();
-  $('#cal-title').textContent = `${MONTHS_NOM[m]} ${y}`;
-
-  const firstPad = (new Date(y, m, 1).getDay() + 6) % 7;
-  const days = new Date(y, m + 1, 0).getDate();
-  const todayKey = isoDate(new Date());
-  let html = '';
-
-  for (let i = 0; i < firstPad; i++) html += '<div class="cal-cell cal-cell--empty"></div>';
-
-  for (let day = 1; day <= days; day++) {
-    const key = `${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const evs = state.events.get(key) || [];
-    const cls = ['cal-cell', evs.length ? 'cal-cell--active' : '', key === todayKey ? 'cal-cell--today' : ''].join(' ');
-    const dots = evs.slice(0, 7).map(ev =>
-      `<span class="cal-dot" data-tier="${esc(ev.title.tier)}"></span>`).join('');
-    const more = evs.length > 7 ? `<span class="cal-cell__more">+${evs.length - 7}</span>` : '';
-    html += `
-      <div class="${cls}" data-date="${key}" tabindex="${evs.length ? 0 : -1}">
-        <span class="cal-cell__num">${day}</span>
-        <div class="cal-cell__dots">${dots}${more}</div>
-      </div>`;
-  }
-  $('#cal-grid').innerHTML = html;
-}
-
-function showCalPop(cell) {
-  hideCalPop();
-  const evs = state.events.get(cell.dataset.date) || [];
-  if (!evs.length) return;
-  const [y, m, d] = cell.dataset.date.split('-').map(Number);
-  const pop = document.createElement('div');
-  pop.className = 'cal-pop';
-  pop.innerHTML = `
-    <div class="cal-pop__date">${d} ${MONTHS_GEN[m - 1].toLowerCase()} ${y}</div>
-    ${evs.map(ev => `
-      <div class="cal-pop__item" data-tier="${esc(ev.title.tier)}">
-        <i></i><span>${esc(ev.title.title)}</span>
-        <span style="color:var(--text-3);font-size:11.5px;">${esc(ev.entry.kind)}</span>
-      </div>`).join('')}`;
-  cell.appendChild(pop);
-  state.popCell = cell;
-}
-function hideCalPop() {
-  if (state.popCell) { $('.cal-pop', state.popCell)?.remove(); state.popCell = null; }
-}
-
-function renderCalList() {
-  const items = [];
-  for (const [key, evs] of state.events) {
-    const [y, m, d] = key.split('-').map(Number);
-    evs.forEach(ev => items.push({ date: new Date(y, m - 1, d), ev }));
-  }
-  items.sort((a, b) => a.date - b.date);
-
-  const byMonth = new Map();
-  items.forEach(({ date, ev }) => {
-    const mk = monthKey(date);
-    if (!byMonth.has(mk)) byMonth.set(mk, []);
-    byMonth.get(mk).push({ date, ev });
-  });
-
-  $('#calendar-list').innerHTML = byMonth.size
-    ? [...byMonth.entries()].map(([mk, days]) => {
-        const [y, m] = mk.split('-').map(Number);
-        return `
-          <div class="clist-month">
-            <h4 class="clist-month-title">${MONTHS_NOM[m - 1]} ${y}</h4>
-            ${days.map(({ date, ev }) => `
-              <div class="clist-day">
-                <span class="clist-day__date">${fmtDateRu(date)}</span>
-                <div class="clist-day__items">
-                  <p class="clist-item" data-tier="${esc(ev.title.tier)}">
-                    <i></i>${esc(ev.title.title)}
-                    <span>${esc(ev.entry.kind)}${ev.entry.episodes ? ` · ${ev.entry.episodes} эп.` : ''}</span>
-                  </p>
-                </div>
-              </div>`).join('')}
-          </div>`;
-      }).join('')
-    : '<div class="empty-state"><p class="empty-title">Пока нет записей</p><p class="empty-note">Добавьте даты просмотра в составных частях тайтлов</p></div>';
-}
-
-/* ============================================================
-   14. ПАНЕЛЬ ФИЛЬТРОВ
-   ============================================================ */
-function renderFilters() {
-  const f = state.filters;
-  const usedGenres = [...new Set(state.titles.flatMap(t => t.genres || []))]
-    .sort((a, b) => a.localeCompare(b, 'ru'));
-
-  $('#filters-body').innerHTML = `
-    <div class="filter-group">
-      <p class="filter-group-title">Тиры</p>
-      <div class="chip-row">
-        ${TIER_KEYS.map(k => `
-          <button class="chip${f.tiers.has(k) ? ' is-on' : ''}" data-tier="${k}" data-f="tier" data-v="${k}">
-            ${f.tiers.has(k) ? '<svg class="icon"><use href="#i-check"/></svg>' : ''}${k}
-          </button>`).join('')}
-      </div>
-    </div>
-    <div class="filter-group">
-      <p class="filter-group-title">Тип</p>
-      <div class="chip-row">
-        ${TYPES.map(x => `
-          <button class="chip${f.types.has(x) ? ' is-on' : ''}" data-f="type" data-v="${esc(x)}" style="--tier-c: var(--accent);">
-            ${f.types.has(x) ? '<svg class="icon"><use href="#i-check"/></svg>' : ''}${esc(x)}
-          </button>`).join('')}
-      </div>
-    </div>
-    <div class="filter-group">
-      <p class="filter-group-title">Жанры</p>
-      <div class="chip-row">
-        ${usedGenres.length ? usedGenres.map(g => `
-          <button class="chip chip--genre${f.genres.has(g) ? ' is-on' : ''}" data-f="genre" data-v="${esc(g)}">
-            ${f.genres.has(g) ? '<svg class="icon"><use href="#i-check"/></svg>' : ''}${esc(g)}
-          </button>`).join('')
-        : '<p class="empty-note">Жанры появятся вместе с тайтлами</p>'}
-      </div>
-    </div>
-    <div class="filter-group">
-      <p class="filter-group-title">Прочее</p>
-      <button class="chip${f.favOnly ? ' is-on' : ''}" data-f="fav" style="--tier-c: var(--accent);">
-        ${f.favOnly ? '<svg class="icon"><use href="#i-check"/></svg>' : ''}Только любимые
-      </button>
-    </div>`;
-
-  $('#filters-dot').hidden = !hasActiveFilters();
-}
-
-function resetFilters() {
-  state.filters = { tiers: new Set(), types: new Set(), genres: new Set(), favOnly: false };
-  state.search = '';
-  $('#search-input').value = '';
-  $('#search-clear').hidden = true;
-  renderFilters();
-  renderTierBar();
-  renderTierSections();
-}
-
-/* ============================================================
-   15. ПАНЕЛЬ НАСТРОЕК
-   ============================================================ */
-function renderSettings() {
-  const s = state.settings;
-  const p = s.particles;
-  const ACCENTS = ['#ff4d6d', '#ff7a2e', '#ff3d55', '#22dd9a', '#35aaff', '#a86bff', '#ff4fa8', '#ffc233'];
-
-  $('#settings-body').innerHTML = `
-    <div class="settings-section">
-      <h3 class="settings-section__title"><svg class="icon"><use href="#i-sliders"/></svg>Оформление</h3>
-      <div class="set-row">
-        <span class="set-row__label">Тема</span>
-        <div class="set-row__control">
-          <select class="set-select" data-set="theme">
-            <option value="dark" ${s.theme === 'dark' ? 'selected' : ''}>Тёмная</option>
-            <option value="light" ${s.theme === 'light' ? 'selected' : ''}>Светлая</option>
-          </select>
-        </div>
-      </div>
-      <div class="set-row">
-        <span class="set-row__label">Акцентный цвет</span>
-        <div class="set-row__control swatches">
-          ${ACCENTS.map(c => `
-            <button class="swatch${c === s.accent ? ' is-active' : ''}" data-set="accent" data-val="${c}"
-              style="background:${c}" title="${c}" aria-label="Цвет ${c}"></button>`).join('')}
-          <input type="color" value="${esc(s.accent)}" data-set="accent-custom"
-            style="width:32px;height:32px;border:none;background:none;padding:0;cursor:pointer;"
-            title="Свой цвет" aria-label="Свой акцентный цвет">
-        </div>
-      </div>
-      <div class="set-row">
-        <span class="set-row__label">Все анимации
-          <span class="set-row__note">Останавливает 3D-буквы, параллакс и переходы (частицы управляются отдельно)</span>
-        </span>
-        <button class="tog${s.animations ? ' is-on' : ''}" data-set="animations" data-val="${!s.animations}"
-          aria-label="Переключить анимации"></button>
-      </div>
-      <div class="set-row">
-        <span class="set-row__label">Вид списка тайтлов</span>
-        <div class="set-row__control">
-          <select class="set-select" data-set="viewMode">
-            <option value="grid" ${s.viewMode === 'grid' ? 'selected' : ''}>Сетка карточек</option>
-            <option value="list" ${s.viewMode === 'list' ? 'selected' : ''}>Список</option>
-            <option value="compact" ${s.viewMode === 'compact' ? 'selected' : ''}>Компактный список</option>
-          </select>
-        </div>
-      </div>
-      <div class="set-row">
-        <span class="set-row__label">Размер карточек</span>
-        <div class="set-row__control">
-          <input type="range" class="range" min="0.8" max="1.4" step="0.05" value="${s.cardSize}" data-set="cardSize">
-          <span class="set-row__value" data-val-label="cardSize">${Math.round(s.cardSize * 100)}%</span>
-        </div>
-      </div>
-      <div class="set-row">
-        <span class="set-row__label">Колонок на десктопе</span>
-        <div class="set-row__control">
-          <select class="set-select" data-set="columns">
-            <option value="auto" ${s.columns === 'auto' ? 'selected' : ''}>Авто</option>
-            ${[6, 7, 8, 9, 10].map(n => `<option value="${n}" ${String(s.columns) === String(n) ? 'selected' : ''}>${n}</option>`).join('')}
-          </select>
-        </div>
-      </div>
-    </div>
-
-    <div class="settings-section">
-      <h3 class="settings-section__title"><svg class="icon"><use href="#i-image"/></svg>Фоновая анимация</h3>
-      <div class="set-row" style="border:none;padding-top:0;">
-        <div class="presets">
-          ${PRESETS.map(pr => `
-            <button class="preset-btn${p.preset === pr.key ? ' is-active' : ''}" data-set="particle-preset" data-val="${pr.key}">
-              <span class="preset-dot" style="--p-color:${pr.color}"></span>${esc(pr.name)}
-            </button>`).join('')}
-        </div>
-      </div>
-      <div class="set-row">
-        <span class="set-row__label">Плотность (частиц)</span>
-        <div class="set-row__control">
-          <input type="range" class="range" min="5" max="120" step="1" value="${p.density}" data-set="particle-density">
-          <span class="set-row__value" data-val-label="pd">${p.density}</span>
-        </div>
-      </div>
-      <div class="set-row">
-        <span class="set-row__label">Скорость падения</span>
-        <div class="set-row__control">
-          <input type="range" class="range" min="0.2" max="3" step="0.1" value="${p.speed}" data-set="particle-speed">
-          <span class="set-row__value" data-val-label="ps">${p.speed}×</span>
-        </div>
-      </div>
-      <div class="set-row">
-        <span class="set-row__label">Размер частиц</span>
-        <div class="set-row__control">
-          <input type="range" class="range" min="0.4" max="2.2" step="0.1" value="${p.size}" data-set="particle-size">
-          <span class="set-row__value" data-val-label="psz">${p.size}×</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="settings-section">
-      <h3 class="settings-section__title"><svg class="icon"><use href="#i-clock"/></svg>Длительность по умолчанию</h3>
-      <div class="set-row">
-        <span class="set-row__label">Средняя серия</span>
-        <div class="set-row__control">
-          <input type="range" class="range" min="15" max="40" step="1" value="${s.avgEpisode}" data-set="avgEpisode">
-          <span class="set-row__value">${s.avgEpisode} мин</span>
-        </div>
-      </div>
-      <div class="set-row">
-        <span class="set-row__label">Средний фильм</span>
-        <div class="set-row__control">
-          <input type="range" class="range" min="60" max="240" step="5" value="${s.avgMovie}" data-set="avgMovie">
-          <span class="set-row__value">${s.avgMovie} мин</span>
-        </div>
-      </div>
-      <p class="set-row__note">Эти значения подставляются, когда у части не указана длительность вручную. Пересчёт времени происходит мгновенно.</p>
-    </div>
-
-    <div class="settings-section">
-      <h3 class="settings-section__title"><svg class="icon"><use href="#i-trash"/></svg>Сброс</h3>
-      <div class="set-row">
-        <span class="set-row__label">Вернуть настройки по умолчанию</span>
-        <button class="btn btn--ghost btn--small" id="btn-reset-settings">Сбросить</button>
-      </div>
-    </div>`;
-
-  hydrateSettings();
-}
-
-function hydrateSettings() {
-  const root = $('#settings-body');
-  // Слушатели навешиваем ОДИН раз — #settings-body живёт постоянно,
-  // а renderSettings() лишь перезаписывает его innerHTML
-  if (hydrateSettings.bound) return;
-  hydrateSettings.bound = true;
-
-  root.addEventListener('click', e => {
-    const btn = e.target.closest('[data-set]');
-    if (btn) {
-      const key = btn.dataset.set;
-      if (key === 'accent') setSetting('accent', btn.dataset.val);
-      if (key === 'animations') setSetting('animations', btn.dataset.val === 'true');
-      if (key === 'particle-preset') {
-        state.settings.particles.preset = btn.dataset.val;
-        persistSettings(); applySettings(); renderSettings();
+  /* ==================== Загрузка данных ==================== */
+  async function loadData() {
+    // 1) локальная версия из localStorage (если есть и не пусто)
+    try {
+      const local = localStorage.getItem(LS.data);
+      if (local) {
+        const parsed = JSON.parse(local);
+        if (parsed && Array.isArray(parsed.titles)) { data = parsed; return; }
       }
-    }
-    if (e.target.closest('#btn-reset-settings')) {
-      state.settings = deepMerge(DEFAULT_SETTINGS, {});
-      persistSettings(); applySettings(); renderSettings();
-      renderTierSections();
-      showToast('Настройки сброшены к значениям по умолчанию', 'ok');
-    }
-  });
+    } catch (e) { console.warn('localStorage data битый', e); }
 
-  root.addEventListener('input', e => {
-    const el = e.target.closest('[data-set]');
-    if (!el) return;
-    const key = el.dataset.set;
+    // 2) data.json из репозитория
+    try {
+      const res = await fetch('data.json', { cache: 'no-store' });
+      if (res.ok) {
+        const parsed = await res.json();
+        if (parsed && Array.isArray(parsed.titles)) data = parsed;
+      }
+    } catch (e) { console.warn('Не удалось загрузить data.json', e); }
 
-    if (key === 'accent-custom') { setSetting('accent', el.value); return; }
-    if (['theme', 'viewMode', 'columns'].includes(key)) return;   // обрабатываются в change
-
-    if (key === 'cardSize') {
-      setSetting('cardSize', Number(el.value));
-      const lbl = root.querySelector('[data-val-label="cardSize"]');
-      if (lbl) lbl.textContent = Math.round(el.value * 100) + '%';
-      renderTierSections();
-      return;
-    }
-    if (key.startsWith('particle-')) {
-      const sub = key.replace('particle-', '');
-      state.settings.particles[sub] = Number(el.value);
-      persistSettings(); applySettings();
-      const lbl = root.querySelector(`[data-val-label="${{ density: 'pd', speed: 'ps', size: 'psz' }[sub]}"]`);
-      if (lbl) lbl.textContent = sub === 'density' ? el.value : el.value + '×';
-      return;
-    }
-    if (key === 'avgEpisode' || key === 'avgMovie') {
-      setSetting(key, Number(el.value));
-      const row = el.closest('.set-row');
-      const lbl = $('.set-row__value', row);
-      if (lbl) lbl.textContent = el.value + ' мин';
-      renderTierSections(); renderRecentStrip();
-      emit('data-changed');
-      return;
-    }
-  });
-
-  root.addEventListener('change', e => {
-    const el = e.target.closest('[data-set]');
-    if (!el) return;
-    const key = el.dataset.set;
-    if (key === 'theme') setSetting('theme', el.value);
-    if (key === 'viewMode') { setSetting('viewMode', el.value); renderTierSections(); }
-    if (key === 'columns') { setSetting('columns', el.value === 'auto' ? 'auto' : Number(el.value)); renderTierSections(); }
-  });
-}
-
-/* ============================================================
-   16. ТОСТЫ
-   ============================================================ */
-function showToast(text, type = 'info', ms = 3400) {
-  const wrap = $('#toasts');
-  while (wrap.children.length >= 4) wrap.firstChild.remove();
-  const el = document.createElement('div');
-  el.className = `toast toast--${type}`;
-  const icon = type === 'ok' ? 'i-check' : type === 'err' ? 'i-alert' : 'i-alert';
-  el.innerHTML = `<svg class="icon"><use href="#${icon}"/></svg><span>${esc(text)}</span>`;
-  wrap.appendChild(el);
-  setTimeout(() => {
-    el.classList.add('is-hiding');
-    el.addEventListener('animationend', () => el.remove(), { once: true });
-  }, ms);
-}
-
-/* ============================================================
-   17. ВКЛАДКИ, DRAWER, ПАРЫЛЛАКС
-   ============================================================ */
-function switchTab(name) {
-  state.tab = name;
-  // ВАЖНО: снимаем атрибут hidden — класс is-active не побеждает
-  // правило [hidden]{display:none!important}, и вкладки не открывались
-  $$('.tab-panel').forEach(p => {
-    const active = p.id === 'tab-' + name;
-    p.classList.toggle('is-active', active);
-    p.hidden = !active;
-  });
-  $$('.tab-btn, .drawer-link').forEach(b => b.classList.toggle('is-active', b.dataset.tab === name));
-  closeDrawer();
-  if (name === 'stats' && window.ArchiveStats) ArchiveStats.render();
-  if (name === 'calendar') {
-    // Восстанавливаем сохранённый режим «Календарь / Список»
-    const mode = state.settings.calMode || 'grid';
-    $$('#cal-switch .segment-btn').forEach(b => b.classList.toggle('is-active', b.dataset.cal === mode));
-    $('#calendar-view').hidden = mode !== 'grid';
-    $('#calendar-list').hidden = mode !== 'list';
-    renderCalendar();
-    renderCalList();
+    if (!data.titles.length) data = { titles: [] };
   }
-  if (name === 'settings') renderSettings();
-}
 
-function openDrawer() {
-  const d = $('#drawer');
-  d.classList.add('is-open');
-  d.setAttribute('aria-hidden', 'false');
-  const ov = $('#drawer-overlay');
-  ov.hidden = false;
-  requestAnimationFrame(() => ov.classList.add('is-open'));
-}
-function closeDrawer() {
-  const d = $('#drawer');
-  if (!d.classList.contains('is-open')) return;
-  d.classList.remove('is-open');
-  d.setAttribute('aria-hidden', 'true');
-  const ov = $('#drawer-overlay');
-  ov.classList.remove('is-open');
-  setTimeout(() => { ov.hidden = true; }, 300);
-}
-
-function renderAll() {
-  renderRecentStrip();
-  renderTierBar();
-  renderTierSections();
-  buildEvents();
-  if (state.tab === 'calendar') { renderCalendar(); renderCalList(); }
-  emit('data-changed');
-}
-
-/* ---------- Параллакс фона ---------- */
-function initParallax() {
-  let tx = 0, ty = 0, px = 0, py = 0, raf = null;
-  window.addEventListener('mousemove', e => {
-    if (!state.settings.animations) return;
-    tx = (e.clientX / innerWidth - 0.5) * 2;
-    ty = (e.clientY / innerHeight - 0.5) * 2;
-    if (!raf) loop();
-  }, { passive: true });
-
-  function loop() {
-    px += (tx - px) * 0.05;
-    py += (ty - py) * 0.05;
-    document.body.style.setProperty('--px', (px * 16).toFixed(1));
-    document.body.style.setProperty('--py', (py * 11).toFixed(1));
-    raf = (Math.abs(tx - px) > 0.002 || Math.abs(ty - py) > 0.002)
-      ? requestAnimationFrame(loop) : null;
+  /* ==================== Настройки ==================== */
+  function loadSettings() {
+    try {
+      const raw = localStorage.getItem(LS.settings);
+      if (raw) settings = Object.assign({}, DEFAULT_SETTINGS, JSON.parse(raw));
+    } catch (e) {}
   }
-}
+  function saveSettings() {
+    localStorage.setItem(LS.settings, JSON.stringify(settings));
+  }
+  function applySettings() {
+    document.documentElement.dataset.theme = settings.theme;
+    document.documentElement.style.setProperty('--accent', settings.accent);
+    document.body.classList.toggle('no-anim', !settings.animations);
 
-/* ============================================================
-   18. ПРИВЯЗКА СОБЫТИЙ ИНТЕРФЕЙСА
-   ============================================================ */
-function bindUI() {
-  document.addEventListener('click', e => {
-    const tabBtn = e.target.closest('.tab-btn, .drawer-link');
-    if (tabBtn) { switchTab(tabBtn.dataset.tab); return; }
+    // Фон
+    if (window.FX) {
+      FX.apply({
+        enabled: settings.animations,
+        preset: settings.preset,
+        density: settings.density,
+        speed: settings.speed,
+        size: settings.size
+      });
+    }
+    // Колонки
+    document.documentElement.style.setProperty('--cols', settings.columns);
+    // Средние длительности для статистики
+    if (window.Stats) Stats.setAverages(settings.avgEpisode, settings.avgMovie);
+  }
 
-    const card = e.target.closest('.title-card, .recent-card');
-    if (card?.dataset.id) { openTitleModal(card.dataset.id); return; }
+  /* ==================== Сохранение данных ==================== */
+  let saveTimer = null;
+  function scheduleSaveLocal() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      try {
+        localStorage.setItem(LS.data, JSON.stringify(data));
+        setSaveStatus('Сохранено локально', 'ok');
+      } catch (e) {
+        setSaveStatus('Ошибка локального сохранения', 'err');
+      }
+    }, 500);
+  }
 
-    const tierChip = e.target.closest('[data-tier-filter]');
-    if (tierChip) {
-      const k = tierChip.dataset.tierFilter;
-      state.filters.tiers.has(k) ? state.filters.tiers.delete(k) : state.filters.tiers.add(k);
-      renderTierBar(); renderFilters(); renderTierSections();
+  function setSaveStatus(text, type) {
+    const el = $('#saveStatus');
+    if (!el) return;
+    el.hidden = false;
+    el.textContent = text;
+    el.className = 'save-status' + (type ? ' ' + type : '');
+    if (type === 'ok') setTimeout(() => { el.hidden = true; }, 2600);
+  }
+
+  /* ==================== Тост-уведомления ==================== */
+  function toast(msg, type = '') {
+    const wrap = $('#toasts');
+    if (!wrap) return;
+    const el = document.createElement('div');
+    el.className = 'toast' + (type ? ' ' + type : '');
+    el.textContent = msg;
+    wrap.appendChild(el);
+    setTimeout(() => {
+      el.style.transition = 'opacity .3s, transform .3s';
+      el.style.opacity = '0';
+      el.style.transform = 'translateX(30px)';
+      setTimeout(() => el.remove(), 320);
+    }, 3200);
+  }
+  window.toast = toast;
+
+  /* ==================== Фильтрация ==================== */
+  function passesFilters(t) {
+    if (filters.q) {
+      const q = filters.q.toLowerCase();
+      const hay = (t.title + ' ' + (t.titleOriginal || '')).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    if (filters.tier && t.tier !== filters.tier) return false;
+    if (filters.type && t.type !== filters.type) return false;
+    if (filters.genre && !(t.genres || []).includes(filters.genre)) return false;
+    if (filters.fav && !t.favorite) return false;
+    return true;
+  }
+
+  /* ==================== Рендер панели тиров ==================== */
+  function renderTierPanel() {
+    const wrap = $('#tierPanel');
+    if (!wrap) return;
+    const total = data.titles.length;
+    wrap.innerHTML = TIERS.map(tier => {
+      const count = data.titles.filter(t => t.tier === tier).length;
+      const p = total ? Math.round(count / total * 100) : 0;
+      return `
+        <div class="tier-chip" data-tier="${tier}" title="${TIER_LABELS[tier]}">
+          <div class="tier-letter">${tier}</div>
+          <div class="tier-meta"><b>${count}</b> · ${p}%</div>
+        </div>
+      `;
+    }).join('');
+
+    // клик по тиру = фильтр
+    $$('.tier-chip', wrap).forEach(chip => {
+      chip.addEventListener('click', () => {
+        filters.tier = filters.tier === chip.dataset.tier ? '' : chip.dataset.tier;
+        $('#filterTier').value = filters.tier;
+        renderAll();
+      });
+    });
+  }
+
+  /* ==================== Рендер ленты «Последние» ==================== */
+  function renderLatest() {
+    const strip = $('#latestStrip');
+    const count = $('#latestCount');
+    if (!strip) return;
+    const sorted = data.titles
+      .slice()
+      .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+      .slice(0, 10);
+    if (count) count.textContent = sorted.length ? `${sorted.length} из ${data.titles.length}` : '';
+    strip.innerHTML = sorted.map(t => `
+      <div class="mini-card" data-id="${esc(t.id)}" title="${esc(t.title)}">
+        <img src="${esc(t.cover || '')}" alt="" loading="lazy"
+             onerror="this.style.background='#222';this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%221%22 height=%221%22/>'">
+        <div class="mini-title">${esc(t.title)}</div>
+      </div>
+    `).join('');
+    strip.querySelectorAll('.mini-card').forEach(c => {
+      c.addEventListener('click', () => openModal(c.dataset.id));
+    });
+  }
+
+  /* ==================== Рендер секций тиров ==================== */
+  function renderTierSections() {
+    const wrap = $('#tierSections');
+    if (!wrap) return;
+
+    const cols = settings.columns;
+    const viewClass = settings.viewMode === 'list' ? 'list-view'
+                    : settings.viewMode === 'compact' ? 'compact-view' : '';
+
+    wrap.innerHTML = TIERS.map(tier => {
+      const list = data.titles.filter(t => t.tier === tier && passesFilters(t));
+      return `
+        <section class="tier-section" data-tier="${tier}">
+          <header class="tier-head" data-tier="${tier}">
+            <span class="tier-letter">${tier}</span>
+            <span class="tier-name">${TIER_LABELS[tier]}</span>
+            <span class="tier-count" data-count="${tier}">${list.length} тайтл(ов)</span>
+          </header>
+          <div class="tier-grid ${viewClass}" id="grid-${tier}"
+               data-tier="${tier}" style="--cols:${cols}"></div>
+        </section>
+      `;
+    }).join('');
+
+    TIERS.forEach(tier => {
+      const grid = document.getElementById('grid-' + tier);
+      if (!grid) return;
+      const list = data.titles.filter(t => t.tier === tier && passesFilters(t));
+      grid.innerHTML = list.map((t, i) => cardHTML(t, i)).join('');
+      grid.classList.toggle('empty', list.length === 0);
+      grid.querySelectorAll('.card').forEach(c => {
+        c.addEventListener('click', () => openModal(c.dataset.id));
+      });
+      initSortable(grid);
+    });
+
+    // Пустое состояние
+    const anyVisible = data.titles.some(passesFilters);
+    $('#emptyState').hidden = anyVisible || data.titles.length === 0 && !hasActiveFilters();
+  }
+
+  function hasActiveFilters() {
+    return filters.q || filters.tier || filters.type || filters.genre || filters.fav;
+  }
+
+  /* ==================== HTML карточки ==================== */
+  function cardHTML(t, idx = 0) {
+    const crowns = t.tier === 'SSS' ? `<span class="badge crown">👑 SSS</span>` : '';
+    const fav = t.favorite ? `<span class="badge fav">❤</span>` : '';
+    const total = window.calcTitleMinutes ? calcTitleMinutes(t) : 0;
+
+    return `
+      <article class="card" data-id="${esc(t.id)}" style="animation-delay:${Math.min(idx * 22, 400)}ms">
+        <div class="card-cover">
+          <img src="${esc(t.cover || '')}" alt="${esc(t.title)}" loading="lazy"
+               onerror="this.style.background='#1a1d2e'">
+          <div class="card-badges">
+            <div>${crowns}</div>
+            <div>${fav}</div>
+          </div>
+        </div>
+        <div class="card-info">
+          <h3 class="card-title">${esc(t.title)}</h3>
+          <div class="card-sub">
+            <span>${esc(t.type || '')}</span>
+            <span class="dot">•</span>
+            <span>${fmtMinutes(total)}</span>
+          </div>
+        </div>
+      </article>
+    `;
+  }
+
+  /* ==================== SortableJS ==================== */
+  function initSortable(grid) {
+    if (!window.Sortable || !IS_OWNER) return;
+    const s = Sortable.create(grid, {
+      group: { name: 'titles', pull: true, put: true },
+      animation: 220,
+      ghostClass: 'is-dragging',
+      delay: 120,
+      delayOnTouchOnly: true,
+      onEnd(evt) {
+        const id = evt.item.dataset.id;
+        const newTier = evt.to.dataset.tier;
+        const title = data.titles.find(x => x.id === id);
+        if (!title) return;
+
+        // Позиция внутри нового тира
+        const newIndex = Array.from(evt.to.children).indexOf(evt.item);
+        const tierList = data.titles.filter(t => t.tier === newTier && t.id !== id);
+
+        // Обновляем массив data.titles: убираем и вставляем
+        const oldTier = title.tier;
+        title.tier = newTier;
+        // Плавная перекраска
+        evt.item.animate([{ transform: 'scale(1.05)' }, { transform: 'scale(1)' }], { duration: 260 });
+
+        // Перестроим порядок в общей очереди (не критично, но пусть)
+        if (oldTier !== newTier) {
+          const oldCount = evt.from.querySelector('[data-count="' + oldTier + '"]');
+        }
+
+        scheduleSaveLocal();
+        renderTierPanel();
+        renderTierSections();
+        renderStats();
+        toast('Тир обновлён', 'ok');
+      }
+    });
+    sortables.push(s);
+  }
+
+  function destroySortables() {
+    sortables.forEach(s => { try { s.destroy(); } catch (e) {} });
+    sortables = [];
+  }
+
+  /* ==================== Модальное окно тайтла ==================== */
+  function openModal(id) {
+    const t = data.titles.find(x => x.id === id);
+    if (!t) return;
+    activeModalId = id;
+
+    const total = calcTitleMinutes(t);
+    const entries = (t.entries || []).map(e => {
+      const mins = window.calcEntryMinutes(e);
+      const kind = e.kind || '';
+      const isFilm = (kind.toLowerCase().includes('фильм')) || (!e.episodes && e.durationMinutes != null);
+      return `
+        <div class="entry-row">
+          <span class="entry-kind">${esc(kind)}</span>
+          <span class="entry-date">${esc(e.watchDate || '')}</span>
+          <span class="entry-eps">${e.episodes ? esc(e.episodes) + ' сер.' : (isFilm ? 'Фильм' : '')}</span>
+          <span class="entry-time">${fmtMinutes(mins)}</span>
+        </div>`;
+    }).join('') || '<div class="hint">Нет записей о просмотре</div>';
+
+    const ownerActions = IS_OWNER ? `
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="modalEdit">Редактировать</button>
+        <button class="btn btn-danger" id="modalDelete">Удалить</button>
+      </div>` : '';
+
+    $('#modalBody').innerHTML = `
+      <div class="modal-hero">
+        <img src="${esc(t.cover || '')}" alt="" onerror="this.style.background='#222'">
+        <div class="modal-info">
+          <h2 id="modalTitleText">${esc(t.title)}</h2>
+          <div class="orig">${esc(t.titleOriginal || '')}</div>
+          <div class="modal-chips">
+            <span class="chip chip-accent">${esc(t.tier)}</span>
+            <span class="chip">${esc(t.type || '')}</span>
+            ${t.favorite ? '<span class="chip chip-fav">❤ Любимый</span>' : ''}
+            ${t.tier === 'SSS' ? '<span class="chip chip-crown">👑 Шедевр</span>' : ''}
+            ${(t.genres || []).map(g => `<span class="chip">${esc(g)}</span>`).join('')}
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-meta">
+        <div class="meta-box"><div class="meta-val">${(t.entries || []).length}</div><div class="meta-lbl">Частей</div></div>
+        <div class="meta-box"><div class="meta-val">${(t.entries || []).reduce((s, e) => s + (Number(e.episodes) || 0), 0)}</div><div class="meta-lbl">Серий</div></div>
+        <div class="meta-box"><div class="meta-val">${fmtMinutes(total)}</div><div class="meta-lbl">Общее время</div></div>
+      </div>
+
+      <div class="entries-title">Составные части</div>
+      <div class="entries-list">${entries}</div>
+
+      <div class="modal-total">
+        <span class="label">Итого по тайтлу</span>
+        <span class="value">${fmtMinutes(total)}</span>
+      </div>
+
+      ${ownerActions}
+    `;
+
+    $('#titleModal').classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+
+    if (IS_OWNER) {
+      $('#modalEdit').addEventListener('click', () => { closeModal(); openEditor(t); });
+      $('#modalDelete').addEventListener('click', () => {
+        if (!confirm('Удалить тайтл «' + t.title + '»?')) return;
+        data.titles = data.titles.filter(x => x.id !== t.id);
+        scheduleSaveLocal();
+        closeModal();
+        renderAll();
+        toast('Тайтл удалён', 'warn');
+      });
+    }
+  }
+
+  function closeModal() {
+    $('#titleModal').classList.remove('is-open');
+    document.body.style.overflow = '';
+    activeModalId = null;
+  }
+
+  /* ==================== Календарь ==================== */
+  function expandEntryDates(entry) {
+    const out = [];
+    if (!entry.watchDate) return out;
+    const raw = String(entry.watchDate).trim();
+    // Диапазон "2024-05-01 – 2024-05-20"
+    const mRange = raw.match(/(\d{4})-(\d{2})-(\d{2})\s*[–—-]\s*(\d{4})-(\d{2})-(\d{2})/);
+    if (mRange) {
+      const start = new Date(+mRange[1], +mRange[2] - 1, +mRange[3]);
+      const end   = new Date(+mRange[4], +mRange[5] - 1, +mRange[6]);
+      const step = new Date(start);
+      while (step <= end && out.length < 400) {
+        out.push(step.toISOString().slice(0, 10));
+        step.setDate(step.getDate() + 1);
+      }
+      return out;
+    }
+    // Одна дата
+    const m = raw.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (m) out.push(`${m[1]}-${m[2]}-${m[3]}`);
+    return out;
+  }
+
+  function collectWatchesByDate() {
+    const map = {};
+    data.titles.forEach(t => (t.entries || []).forEach(e => {
+      expandEntryDates(e).forEach(d => {
+        (map[d] = map[d] || []).push({ title: t, entry: e });
+      });
+    }));
+    return map;
+  }
+
+  function renderCalendar() {
+    const grid = $('#calGrid');
+    const list = $('#calList');
+    if (!grid) return;
+
+    const y = currentCalDate.getFullYear();
+    const m = currentCalDate.getMonth();
+    $('#calTitle').textContent = MONTHS_RU[m] + ' ' + y;
+
+    const map = collectWatchesByDate();
+
+    if (calMode === 'list') {
+      grid.hidden = true; list.hidden = false;
+      renderCalList(map);
       return;
     }
+    grid.hidden = false; list.hidden = true;
 
-    const viewBtn = e.target.closest('.view-btn');
-    if (viewBtn) {
-      state.settings.viewMode = viewBtn.dataset.view;
-      persistSettings();
-      renderTierSections();
+    const first = new Date(y, m, 1);
+    const startDow = (first.getDay() + 6) % 7; // Пн = 0
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const today = new Date();
+
+    let html = DOW_RU.map(d => `<div class="cal-dow">${d}</div>`).join('');
+
+    // пустые клетки до 1-го числа
+    for (let i = 0; i < startDow; i++) html += '<div class="cal-day muted"></div>';
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const key = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const items = map[key] || [];
+      const isToday = today.getFullYear() === y && today.getMonth() === m && today.getDate() === d;
+      const dots = items.slice(0, 6).map(() => '<span class="cal-dot"></span>').join('');
+      html += `
+        <div class="cal-day ${items.length ? 'has' : ''} ${isToday ? 'today' : ''}"
+             data-date="${key}" data-count="${items.length}">
+          <div class="cal-num">${d}</div>
+          <div class="cal-dots">${dots}</div>
+          ${items.length > 6 ? `<div class="cal-count">+${items.length - 6}</div>` : ''}
+        </div>`;
+    }
+
+    // клетки после последнего дня — до полной недели
+    const tail = (7 - ((startDow + daysInMonth) % 7)) % 7;
+    for (let i = 0; i < tail; i++) html += '<div class="cal-day muted"></div>';
+
+    grid.innerHTML = html;
+
+    // тултип при наведении/тапе
+    const tip = $('#calTooltip');
+    grid.querySelectorAll('.cal-day.has').forEach(cell => {
+      const show = ev => {
+        const key = cell.dataset.date;
+        const items = map[key] || [];
+        if (!items.length) return;
+        tip.innerHTML = `<b>${fmtDateRu(key)}</b><br>` +
+          items.slice(0, 14).map(it =>
+            `• ${esc(it.title.title)} — ${esc(it.entry.kind || '')}`
+          ).join('<br>') +
+          (items.length > 14 ? `<br>… ещё ${items.length - 14}` : '');
+        tip.hidden = false;
+        const r = cell.getBoundingClientRect();
+        const tw = 260, th = 120;
+        let left = r.left + r.width / 2 - tw / 2;
+        let top  = r.top - th - 8;
+        if (left < 8) left = 8;
+        if (left + tw > innerWidth - 8) left = innerWidth - tw - 8;
+        if (top < 8) top = r.bottom + 8;
+        tip.style.left = left + 'px';
+        tip.style.top = top + 'px';
+      };
+      cell.addEventListener('mouseenter', show);
+      cell.addEventListener('click', show);
+      cell.addEventListener('mouseleave', () => { tip.hidden = true; });
+      cell.addEventListener('touchstart', e => { e.preventDefault(); show(e); }, { passive: false });
+    });
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.cal-day') && !e.target.closest('#calTooltip')) tip.hidden = true;
+    });
+  }
+
+  function renderCalList(map) {
+    const list = $('#calList');
+    const keys = Object.keys(map).sort().reverse();
+    if (!keys.length) {
+      list.innerHTML = '<div class="hint">Пока нет записей о просмотре.</div>';
       return;
     }
+    // группировка по месяцам
+    const byMonth = {};
+    keys.forEach(k => {
+      const [y, m] = k.split('-');
+      const mk = `${y}-${m}`;
+      (byMonth[mk] = byMonth[mk] || []).push(k);
+    });
+    list.innerHTML = Object.keys(byMonth).sort().reverse().map(mk => {
+      const [y, m] = mk.split('-');
+      const days = byMonth[mk];
+      const rows = days.flatMap(d => {
+        const items = map[d];
+        return items.map(it => `
+          <div class="cal-entry">
+            <img src="${esc(it.title.cover || '')}" alt="" onerror="this.style.background='#222'">
+            <div class="cal-entry-info">
+              <div class="cal-entry-title">${esc(it.title.title)}</div>
+              <div class="cal-entry-meta">${fmtDateRu(d)} · ${esc(it.entry.kind || '')}${it.entry.episodes ? ' · ' + it.entry.episodes + ' сер.' : ''}</div>
+            </div>
+          </div>
+        `).join('');
+      }).join('');
+      return `
+        <div>
+          <div class="cal-month-title">${MONTHS_RU[+m - 1]} ${y}</div>
+          ${rows}
+        </div>`;
+    }).join('');
+  }
 
-    if (e.target.closest('#btn-settings')) { switchTab('settings'); return; }
-    if (e.target.closest('#btn-add') || e.target.closest('#drawer-add')) { openForm(); return; }
-    if (e.target.closest('#btn-burger')) { openDrawer(); return; }
-    if (e.target.closest('#drawer-close') || e.target.closest('#drawer-overlay')) { closeDrawer(); return; }
+  /* ==================== Рендер статистики ==================== */
+  function renderStats() {
+    if (window.Stats) Stats.render(data.titles);
+  }
 
-    if (e.target.closest('#btn-filters')) {
-      const panel = $('#filters-panel');
-      const open = panel.hidden;
-      panel.hidden = !open;
-      $('#btn-filters').setAttribute('aria-expanded', String(open));
-      if (open) renderFilters();
-      return;
-    }
-    if (e.target.closest('#btn-filters-reset')) { resetFilters(); return; }
-    const fChip = e.target.closest('#filters-body [data-f]');
-    if (fChip) {
-      const { f, v } = fChip.dataset;
-      if (f === 'tier') state.filters.tiers.has(v) ? state.filters.tiers.delete(v) : state.filters.tiers.add(v);
-      if (f === 'type') state.filters.types.has(v) ? state.filters.types.delete(v) : state.filters.types.add(v);
-      if (f === 'genre') state.filters.genres.has(v) ? state.filters.genres.delete(v) : state.filters.genres.add(v);
-      if (f === 'fav') state.filters.favOnly = !state.filters.favOnly;
-      renderFilters(); renderTierBar(); renderTierSections();
-      return;
-    }
-
-    if (e.target.closest('#cal-prev')) { state.calDate.setMonth(state.calDate.getMonth() - 1); renderCalendar(); return; }
-    if (e.target.closest('#cal-next')) { state.calDate.setMonth(state.calDate.getMonth() + 1); renderCalendar(); return; }
-    if (e.target.closest('#cal-today')) { state.calDate = new Date(); renderCalendar(); return; }
-    const calMode = e.target.closest('#cal-switch .segment-btn');
-    if (calMode) {
-      state.settings.calMode = calMode.dataset.cal;
-      persistSettings();
-      $$('#cal-switch .segment-btn').forEach(b => b.classList.toggle('is-active', b === calMode));
-      $('#calendar-view').hidden = calMode.dataset.cal !== 'grid';
-      $('#calendar-list').hidden = calMode.dataset.cal !== 'list';
-      return;
-    }
-
-    const cell = e.target.closest('.cal-cell--active');
-    if (cell) {
-      if (state.popCell === cell) hideCalPop(); else showCalPop(cell);
-      e.stopPropagation();
-      return;
-    }
-    hideCalPop();
-  });
-
-  // Esc — закрыть форму / модалку / меню (НЕ клик по фону)
-  document.addEventListener('keydown', e => {
-    if (e.key !== 'Escape') return;
-    const form = $('#modal-form'), title = $('#modal-title');
-    if (form.classList.contains('is-open')) {
-      closeModal(form);
-      if (state.form?.backToTitle && state.form.editingId) openTitleModal(state.form.editingId);
-    } else if (title.classList.contains('is-open')) {
-      closeModal(title);
-    } else {
-      closeDrawer();
-    }
-  });
-
-  $('#modal-title-close').addEventListener('click', () => closeModal($('#modal-title')));
-  $('#modal-form-close').addEventListener('click', () => {
-    closeModal($('#modal-form'));
-    if (state.form?.backToTitle && state.form.editingId) openTitleModal(state.form.editingId);
-  });
-
-  // Поиск с лёгким debounce
-  let searchTimer = null;
-  $('#search-input').addEventListener('input', e => {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => {
-      state.search = e.target.value.trim();
-      $('#search-clear').hidden = !state.search;
-      renderTierSections();
-    }, 130);
-  });
-  $('#search-clear').addEventListener('click', () => {
-    $('#search-input').value = '';
-    state.search = '';
-    $('#search-clear').hidden = true;
+  /* ==================== Общий рендер ==================== */
+  function renderAll() {
+    destroySortables();
+    renderTierPanel();
+    renderLatest();
     renderTierSections();
-    $('#search-input').focus();
-  });
+    renderCalendar();
+    renderStats();
 
-  // Поповер календаря: наведение мыши
-  const grid = $('#cal-grid');
-  grid.addEventListener('pointerover', e => {
-    if (e.pointerType !== 'mouse') return;
-    const cell = e.target.closest('.cal-cell--active');
-    if (cell && cell !== state.popCell) showCalPop(cell);
-  });
-  grid.addEventListener('pointerout', e => {
-    if (e.pointerType !== 'mouse') return;
-    const cell = e.target.closest('.cal-cell');
-    if (cell && !cell.contains(e.relatedTarget)) hideCalPop();
-  });
-}
-
-/* ============================================================
-   19. ЗАПУСК
-   ============================================================ */
-async function init() {
-  if (isOwner) {
-    document.body.classList.add('owner-mode');
-    $('#btn-add').hidden = false;
-    $('#drawer-add').hidden = false;
-    $('#mode-badge').hidden = false;
-    $('#mode-badge').textContent = 'Режим владельца';
-    $('#drawer-foot').textContent = 'Изменения сохраняются локально и на GitHub';
-  } else {
-    $('#mode-badge').hidden = false;
-    $('#mode-badge').textContent = 'Режим просмотра';
-    $('#drawer-foot').textContent = 'Каталог доступен только для чтения';
+    // Футер
+    const fs = $('#footerStats');
+    if (fs) fs.textContent = `${data.titles.length} тайтлов · ${TIERS.reduce((s, t) => s + data.titles.filter(x => x.tier === t).length, 0)} в тирах`;
   }
 
-  $('#footer-year').textContent = new Date().getFullYear();
-
-  loadSettings();
-  applySettings();
-  bindUI();
-  initParallax();
-
-  await loadTitles();
-  renderAll();
-}
-
-document.addEventListener('DOMContentLoaded', init);
-
-/* ============================================================
-   20. ПУБЛИЧНЫЙ API (для admin.js и stats.js)
-   ============================================================ */
-window.App = {
-  state,
-  get titles() { return state.titles; },
-  setTitles(arr) { state.titles = arr || []; renderAll(); },
-  get settings() { return state.settings; },
-  isOwner: () => isOwner,
-
-  TIERS, TIER_KEYS, TYPES, GENRES, PRESETS, ENTRY_KINDS,
-
-  entryMinutes, titleMinutes, totalEpisodes, fmtMin,
-  parseWatchDate, isoDate, monthKey, fmtDateRu,
-
-  renderAll, renderTierSections, renderCalendar, renderCalList,
-  renderSettings, renderFilters,
-
-  setSetting, applySettings, persistSettings,
-
-  scheduleAutosave, saveToLocal, forceRemoteLoad,
-  exportJSON: () => JSON.stringify({ titles: state.titles }, null, 2),
-
-  showToast, switchTab, openTitleModal, openForm,
-
-  movieStats() {
-    const s = state.settings;
-    let movieMin = 0, totalMin = 0, movieCount = 0;
-    for (const t of state.titles) {
-      totalMin += titleMinutes(t, s);
-      if ((t.entries || []).some(e => e.kind === 'Фильм')) movieCount++;
-      movieMin += (t.entries || [])
-        .filter(e => e.kind === 'Фильм')
-        .reduce((sum, e) => sum + entryMinutes(e, s, t.type), 0);
+  /* ==================== Инициализация фильтров ==================== */
+  function initFilters() {
+    const gSel = $('#filterGenre');
+    if (gSel) {
+      ALL_GENRES.forEach(g => {
+        const o = document.createElement('option');
+        o.value = g; o.textContent = g;
+        gSel.appendChild(o);
+      });
+      gSel.addEventListener('change', () => { filters.genre = gSel.value; renderAll(); });
     }
-    return { movieMin, totalMin, movieCount };
-  },
 
-  on, emit,
-};
+    const search = $('#searchInput');
+    let st = null;
+    search.addEventListener('input', () => {
+      clearTimeout(st);
+      st = setTimeout(() => { filters.q = search.value.trim(); $('#searchClear').hidden = !filters.q; renderAll(); }, 180);
+    });
+    $('#searchClear').addEventListener('click', () => {
+      search.value = ''; filters.q = ''; $('#searchClear').hidden = true; renderAll();
+    });
+
+    $('#filterTier').addEventListener('change', e => { filters.tier = e.target.value; renderAll(); });
+    $('#filterType').addEventListener('change', e => { filters.type = e.target.value; renderAll(); });
+    $('#filterFav').addEventListener('change', e => { filters.fav = e.target.checked; renderAll(); });
+    $('#viewMode').addEventListener('change', e => {
+      settings.viewMode = e.target.value; saveSettings(); applySettings(); renderAll();
+    });
+    $('#btnResetFilters').addEventListener('click', resetFilters);
+    $('#btnEmptyReset').addEventListener('click', resetFilters);
+  }
+
+  function resetFilters() {
+    filters = { q: '', tier: '', type: '', genre: '', fav: false };
+    $('#searchInput').value = ''; $('#searchClear').hidden = true;
+    $('#filterTier').value = ''; $('#filterType').value = ''; $('#filterGenre').value = '';
+    $('#filterFav').checked = false;
+    renderAll();
+  }
+
+  /* ==================== Настройки панели ==================== */
+  function initSettings() {
+    const panel = $('#settingsPanel');
+    const backdrop = $('#settingsBackdrop');
+
+    const open = () => { panel.classList.add('is-open'); backdrop.hidden = false; };
+    const close = () => { panel.classList.remove('is-open'); backdrop.hidden = true; };
+
+    $('#btnSettings').addEventListener('click', open);
+    $('.tab-settings').addEventListener('click', open);
+    $('#btnSettingsClose').addEventListener('click', close);
+    backdrop.addEventListener('click', close);
+
+    // ---- Тема ----
+    const setTheme = $('#setTheme');
+    setTheme.value = settings.theme;
+    setTheme.addEventListener('change', () => { settings.theme = setTheme.value; saveSettings(); applySettings(); });
+
+    // ---- Акцент ----
+    const colorInput = $('#setAccent');
+    colorInput.value = settings.accent;
+    colorInput.addEventListener('input', () => {
+      settings.accent = colorInput.value; saveSettings(); applySettings(); renderStats();
+    });
+    const accents = ['#ff5f9e','#ffb547','#7c5cff','#4dabff','#3ddc97','#ff4d6d','#c9184a','#ffe066'];
+    $('#accentSwatches').innerHTML = accents.map(c =>
+      `<div class="swatch" style="background:${c}" data-color="${c}"></div>`).join('');
+    $$('#accentSwatches .swatch').forEach(s => {
+      s.addEventListener('click', () => {
+        settings.accent = s.dataset.color;
+        colorInput.value = s.dataset.color;
+        saveSettings(); applySettings(); renderStats();
+      });
+    });
+
+    // ---- Анимации / параллакс ----
+    const an = $('#setAnimations');
+    an.checked = settings.animations;
+    an.addEventListener('change', () => { settings.animations = an.checked; saveSettings(); applySettings(); });
+    const px = $('#setParallax');
+    px.checked = settings.parallax;
+    px.addEventListener('change', () => { settings.parallax = px.checked; saveSettings(); });
+
+    // ---- Пресеты частиц ----
+    renderPresetGrid();
+
+    // ---- Ползунки частиц ----
+    const dEl = $('#setDensity'), sEl = $('#setSpeed'), zEl = $('#setSize');
+    dEl.value = settings.density;
+    sEl.value = settings.speed;
+    zEl.value = settings.size;
+    $('#valDensity').textContent = settings.density;
+    $('#valSpeed').textContent = Number(settings.speed).toFixed(1);
+    $('#valSize').textContent = Number(settings.size).toFixed(1);
+
+    dEl.addEventListener('input', () => {
+      settings.density = +dEl.value; $('#valDensity').textContent = dEl.value;
+      saveSettings(); applySettings();
+    });
+    sEl.addEventListener('input', () => {
+      settings.speed = +sEl.value; $('#valSpeed').textContent = Number(sEl.value).toFixed(1);
+      saveSettings(); applySettings();
+    });
+    zEl.addEventListener('input', () => {
+      settings.size = +zEl.value; $('#valSize').textContent = Number(zEl.value).toFixed(1);
+      saveSettings(); applySettings();
+    });
+
+    // ---- Вид / размер / колонки ----
+    const vm = $('#setViewMode');
+    vm.value = settings.viewMode;
+    vm.addEventListener('change', () => {
+      settings.viewMode = vm.value; $('#viewMode').value = vm.value;
+      saveSettings(); applySettings(); renderAll();
+    });
+
+    const cs = $('#setCardSize');
+    cs.value = settings.cardSize;
+    $('#valCardSize').textContent = Number(settings.cardSize).toFixed(2);
+    cs.addEventListener('input', () => {
+      settings.cardSize = +cs.value;
+      $('#valCardSize').textContent = Number(cs.value).toFixed(2);
+      document.documentElement.style.setProperty('--card-scale', settings.cardSize);
+      saveSettings();
+    });
+
+    const colEl = $('#setColumns');
+    colEl.value = settings.columns;
+    $('#valColumns').textContent = settings.columns;
+    colEl.addEventListener('input', () => {
+      settings.columns = +colEl.value; $('#valColumns').textContent = colEl.value;
+      saveSettings(); applySettings(); renderAll();
+    });
+
+    // ---- Длительности по умолчанию ----
+    const ae = $('#setAvgEpisode'), am = $('#setAvgMovie');
+    ae.value = settings.avgEpisode; am.value = settings.avgMovie;
+    ae.addEventListener('change', () => { settings.avgEpisode = +ae.value || 24; saveSettings(); applySettings(); renderAll(); });
+    am.addEventListener('change', () => { settings.avgMovie   = +am.value || 110; saveSettings(); applySettings(); renderAll(); });
+  }
+
+  function renderPresetGrid() {
+    const grid = $('#presetGrid');
+    if (!grid || !window.FX) return;
+    grid.innerHTML = Object.keys(FX.presets).map(key => {
+      const p = FX.presets[key];
+      return `<button class="preset-btn ${settings.preset === key ? 'is-active' : ''}"
+        data-preset="${key}" title="${p.label}" type="button">${p.icon}<small>${p.label}</small></button>`;
+    }).join('');
+    grid.querySelectorAll('.preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        settings.preset = btn.dataset.preset;
+        grid.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('is-active'));
+        btn.classList.add('is-active');
+        saveSettings(); applySettings();
+      });
+    });
+  }
+
+  /* ==================== Модалка: закрытие ==================== */
+  function initModal() {
+    $('#modalClose').addEventListener('click', closeModal);
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        if ($('#titleModal').classList.contains('is-open')) closeModal();
+        if ($('#editorModal') && $('#editorModal').classList.contains('is-open')) closeEditor();
+      }
+    });
+    // ВАЖНО: клик по оверлею НЕ закрывает модалку
+  }
+
+  /* ==================== Табы ==================== */
+  function initTabs() {
+    $$('.tab').forEach(t => {
+      t.addEventListener('click', () => {
+        const name = t.dataset.tab;
+        if (name === 'settings') return; // открывает панель
+        $$('.tab').forEach(x => x.classList.remove('is-active'));
+        t.classList.add('is-active');
+        $$('.view').forEach(v => v.classList.remove('is-active'));
+        const view = document.getElementById('view-' + name);
+        if (view) view.classList.add('is-active');
+        if (name === 'stats') setTimeout(renderStats, 60);
+        if (name === 'calendar') setTimeout(renderCalendar, 60);
+        // закрыть бургер
+        $('#mainTabs').classList.remove('is-open');
+      });
+    });
+    $('#btnBurger').addEventListener('click', () => {
+      $('#mainTabs').classList.toggle('is-open');
+    });
+  }
+
+  /* ==================== Календарь: навигация ==================== */
+  function initCalendarControls() {
+    $('#calPrev').addEventListener('click', () => {
+      currentCalDate.setMonth(currentCalDate.getMonth() - 1);
+      renderCalendar();
+    });
+    $('#calNext').addEventListener('click', () => {
+      currentCalDate.setMonth(currentCalDate.getMonth() + 1);
+      renderCalendar();
+    });
+    $('#calToday').addEventListener('click', () => {
+      currentCalDate = new Date();
+      renderCalendar();
+    });
+    $$('#calModeSwitch .seg').forEach(btn => {
+      btn.addEventListener('click', () => {
+        calMode = btn.dataset.calmode;
+        $$('#calModeSwitch .seg').forEach(b => b.classList.remove('is-active'));
+        btn.classList.add('is-active');
+        renderCalendar();
+      });
+    });
+  }
+
+  /* ==================== Параллакс фона ==================== */
+  function initParallax() {
+    let tx = 0, ty = 0, cx = 0, cy = 0;
+    document.addEventListener('mousemove', e => {
+      if (!settings.parallax) return;
+      tx = (e.clientX / innerWidth - 0.5) * 30;
+      ty = (e.clientY / innerHeight - 0.5) * 30;
+    });
+    (function loop() {
+      if (settings.parallax) {
+        cx += (tx - cx) * 0.06;
+        cy += (ty - cy) * 0.06;
+        document.documentElement.style.setProperty('--par-x', cx.toFixed(2) + 'px');
+        document.documentElement.style.setProperty('--par-y', cy.toFixed(2) + 'px');
+      }
+      requestAnimationFrame(loop);
+    })();
+  }
+
+  /* ==================== Owner: загрузка admin.js ==================== */
+  async function ensureAdmin() {
+    if (!IS_OWNER) return;
+    document.body.dataset.owner = 'true';
+    const badge = $('#ownerBadge'); if (badge) badge.hidden = false;
+    $$('[data-owner-only]').forEach(el => el.hidden = false);
+    $('#btnAddTitle').hidden = false;
+
+    // Динамически подгружаем admin.js если его нет
+    if (!window.Admin) {
+      await new Promise(res => {
+        const s = document.createElement('script');
+        s.src = 'js/admin.js';
+        s.onload = res;
+        s.onerror = () => { console.warn('admin.js не найден'); res(); };
+        document.body.appendChild(s);
+      });
+    }
+    if (window.Admin && window.Admin.init) {
+      window.Admin.init({
+        getData: () => data,
+        setData: (d) => { data = d; scheduleSaveLocal(); renderAll(); },
+        saveLocal: scheduleSaveLocal,
+        renderAll,
+        renderStats,
+        openEditor,
+        closeEditor,
+        toast
+      });
+    }
+  }
+
+  /* ==================== Редактор (используется admin.js) ==================== */
+  function openEditor(t) { if (window.Admin) window.Admin.openEditor(t); }
+  function closeEditor() { if (window.Admin) window.Admin.closeEditor(); }
+
+  /* ==================== Старт ==================== */
+  async function init() {
+    loadSettings();
+    applySettings();
+    await loadData();
+
+    initFilters();
+    initSettings();
+    initModal();
+    initTabs();
+    initCalendarControls();
+    initParallax();
+
+    renderAll();
+    await ensureAdmin();
+
+    // Слушаем изменение localStorage (например, из другой вкладки)
+    window.addEventListener('storage', e => {
+      if (e.key === LS.data) {
+        try {
+          const d = JSON.parse(e.newValue);
+          if (d && Array.isArray(d.titles)) { data = d; renderAll(); }
+        } catch (_) {}
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+
+  /* ==================== Экспорт для admin.js ==================== */
+  window.AppAPI = {
+    get data() { return data; },
+    set data(d) { data = d; },
+    get settings() { return settings; },
+    saveSettings,
+    applySettings,
+    renderAll,
+    renderStats,
+    renderCalendar,
+    scheduleSaveLocal,
+    setSaveStatus,
+    toast,
+    ALL_GENRES,
+    TIERS,
+    TIER_LABELS,
+    esc,
+    fmtMinutes,
+    fmtDateRu,
+    calcTitleMinutes,
+    IS_OWNER
+  };
+})();
