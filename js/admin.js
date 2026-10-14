@@ -1,332 +1,377 @@
-/* ============================================================
-   АНИМЕ-АРХИВ — admin.js
-   Модуль владельца: сохранение каталога на GitHub через
-   Contents API (PUT data.json с обязательным SHA текущего файла),
-   Personal Access Token в localStorage, экспорт/импорт JSON,
-   строка статуса «Сохранено локально / Отправлено на GitHub».
+/* =====================================================================
+   admin.js — режим владельца: сохранение в GitHub Contents API,
+   редактор тайтла, экспорт/импорт JSON.
+   ===================================================================== */
 
-   Модуль подключается на всех страницах, но активируется
-   ТОЛЬКО в режиме владельца (App.isOwner()). Сам по себе URL
-   admin.html прав ничего не даёт: без токена изменить data.json
-   в репозитории невозможно.
-   ============================================================ */
 (function () {
   'use strict';
 
-  const LS_GH = 'animeArchive.github';   // { token, repo, branch, path }
-  const LS_DATA = 'animeArchive.data';   // ключ автосохранения app.js
+  const LS = { github: 'anime-archive:github' };
+  const $  = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 
-  document.addEventListener('DOMContentLoaded', () => {
-    if (!window.App || !App.isOwner()) return;   // публичный режим — выходим
-    boot();
-  });
+  const API = {
+    getData: null, setData: null, saveLocal: null,
+    renderAll: null, renderStats: null, toast: null
+  };
 
-  /* ============================================================
-     ПАНЕЛЬ ВЛАДЕЛЬЦА (вкладка «Настройки», над остальными секциями)
-     ============================================================ */
-  function boot() {
-    const cfg = loadGhCfg();
+  let gh = { token: '', repo: '', branch: 'main', path: 'data.json' };
+  let editorId = null;             // id редактируемого тайтла (null = новый)
+  let editorGenres = new Set();
+  let editorEntries = [];
 
-    document.getElementById('tab-settings')
-      .insertAdjacentHTML('afterbegin', `
-      <div class="admin-panel" id="admin-panel">
-        <h3><svg class="icon"><use href="#i-key"/></svg>Панель владельца — синхронизация с GitHub</h3>
+  /* ==================== Инициализация ==================== */
+  function init(api) {
+    Object.assign(API, api);
 
-        <div class="admin-row">
-          <input type="password" class="form-input" id="gh-token"
-                 placeholder="Personal Access Token (права repo / Contents: write)"
-                 autocomplete="off">
-          <button class="btn btn--accent" id="gh-check">
-            <svg class="icon"><use href="#i-check"/></svg>Проверить
-          </button>
-        </div>
-
-        <div class="admin-row">
-          <input class="form-input" id="gh-repo" placeholder="владелец/репозиторий" style="flex:1.4 1 180px;">
-          <input class="form-input" id="gh-branch" placeholder="ветка (main)">
-          <input class="form-input" id="gh-path" placeholder="путь к data.json">
-        </div>
-
-        <div class="admin-row">
-          <button class="btn btn--accent" id="gh-put">
-            <svg class="icon"><use href="#i-save"/></svg>Отправить на GitHub
-          </button>
-          <button class="btn btn--ghost" id="gh-pull">
-            <svg class="icon"><use href="#i-download"/></svg>Взять с GitHub
-          </button>
-          <button class="btn btn--ghost" id="btn-export">
-            <svg class="icon"><use href="#i-download"/></svg>Экспорт JSON
-          </button>
-          <button class="btn btn--ghost" id="btn-import">
-            <svg class="icon"><use href="#i-upload"/></svg>Импорт JSON
-          </button>
-          <button class="btn btn--danger btn--small" id="gh-wipe-local">Сбросить локальную копию</button>
-          <input type="file" id="imp-file" accept=".json,application/json" hidden>
-        </div>
-
-        <label class="drop-zone" id="drop-zone">
-          …или перетащите файл <code>data.json</code> сюда — каталог будет заменён его содержимым
-        </label>
-
-        <div class="status-line" id="gh-status">
-          <span class="status-dot"></span><span id="gh-status-text">Готово к работе</span>
-        </div>
-
-        <p class="token-hint">
-          Токен хранится только в localStorage вашего браузера и отправляется исключительно
-          в API GitHub. Репозиторий и ветка определяются автоматически по адресу страницы
-          (можно исправить вручную). Публичная страница ничего не знает о токене.
-        </p>
-      </div>`);
-
-    // Предзаполнение и автоопределение
-    $('#gh-repo').value = cfg.repo || autoDetectRepo() || '';
-    $('#gh-branch').value = cfg.branch || '';
-    $('#gh-path').value = cfg.path || 'data.json';
-    if (cfg.token) $('#gh-token').placeholder = 'Токен сохранён — введите новый, чтобы заменить';
-
-    bind();
-    setStatus('ok', `Локально: ${App.titles.length} тайтл(ов)`);
-
-    // Если есть несохранённая локальная копия — сразу предупредим
-    if (localStorage.getItem(LS_DATA)) {
-      setStatus('warn', 'Есть локальные правки — не отправлено на GitHub');
-    }
-  }
-
-  const $ = sel => document.querySelector(sel);
-
-  /* ============================================================
-     КОНФИГУРАЦИЯ GITHUB (localStorage)
-     ============================================================ */
-  function loadGhCfg() {
-    try { return JSON.parse(localStorage.getItem(LS_GH)) || {}; } catch { return {}; }
-  }
-  function saveGhCfg(patch) {
-    localStorage.setItem(LS_GH, JSON.stringify({ ...loadGhCfg(), ...patch }));
-  }
-
-  // Автоопределение: https://<owner>.github.io/<repo>/… или <owner>.github.io
-  function autoDetectRepo() {
+    // Загружаем сохранённые настройки GitHub
     try {
-      const url = new URL(location.href);
-      if (!/\.github\.io$/.test(url.hostname)) return '';
-      const owner = url.hostname.replace(/\.github\.io$/, '');
-      const seg = url.pathname.split('/').filter(Boolean)[0];
-      return seg ? `${owner}/${seg}` : `${owner}/${owner}.github.io`;
-    } catch { return ''; }
+      const raw = localStorage.getItem(LS.github);
+      if (raw) gh = Object.assign(gh, JSON.parse(raw));
+    } catch (e) {}
+
+    $('#setToken').value  = gh.token;
+    $('#setRepo').value   = gh.repo;
+    $('#setBranch').value = gh.branch;
+    $('#setPath').value   = gh.path;
+
+    ['setToken','setRepo','setBranch','setPath'].forEach(id => {
+      $('#' + id).addEventListener('change', saveGhSettings);
+    });
+
+    $('#btnSaveGithub').addEventListener('click', saveToGithub);
+    $('#btnExportJson').addEventListener('click', exportJson);
+    $('#btnImportJson').addEventListener('click', () => $('#importFile').click());
+    $('#importFile').addEventListener('change', importJson);
+
+    $('#btnAddTitle').addEventListener('click', () => openEditor(null));
+
+    injectEditorModal();
   }
 
-  const apiHeaders = token => ({
-    'Authorization': `Bearer ${token}`,
-    'Accept': 'application/vnd.github+json',
-    'X-GitHub-Api-Version': '2022-11-28',
-  });
-
-  /* ============================================================
-     СТАТУСНАЯ СТРОКА
-     ============================================================ */
-  function setStatus(kind, text) {
-    const line = $('#gh-status');
-    if (!line) return;
-    line.className = `status-line status-line--${kind}`;
-    $('#gh-status-text').textContent = text;
+  function saveGhSettings() {
+    gh = {
+      token:  $('#setToken').value.trim(),
+      repo:   $('#setRepo').value.trim(),
+      branch: $('#setBranch').value.trim() || 'main',
+      path:   $('#setPath').value.trim() || 'data.json'
+    };
+    localStorage.setItem(LS.github, JSON.stringify(gh));
   }
 
-  /* ============================================================
-     UTF-8 → base64 (для Contents API), безопасно для больших строк
-     ============================================================ */
-  function utf8ToBase64(str) {
-    const bytes = new TextEncoder().encode(str);
-    let bin = '';
-    const CHUNK = 0x8000;
-    for (let i = 0; i < bytes.length; i += CHUNK) {
-      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
-    }
-    return btoa(bin);
+  /* ==================== Модалка-редактор (вставляется в DOM) ==================== */
+  function injectEditorModal() {
+    if ($('#editorModal')) return;
+    const div = document.createElement('div');
+    div.className = 'modal';
+    div.id = 'editorModal';
+    div.innerHTML = `
+      <div class="modal-overlay"></div>
+      <div class="modal-window glass" role="dialog" aria-modal="true">
+        <button class="modal-close" id="editorClose" type="button" aria-label="Закрыть">✕</button>
+        <div class="modal-body">
+          <h2 id="editorTitle" style="font-size:20px;margin-bottom:18px">Новый тайтл</h2>
+
+          <div class="editor-field">
+            <label class="editor-label">Название (рус.)</label>
+            <input class="input" id="edTitle" placeholder="Например: Атака титанов">
+          </div>
+
+          <div class="editor-field">
+            <label class="editor-label">Оригинальное название</label>
+            <input class="input" id="edOriginal" placeholder="Shingeki no Kyojin">
+          </div>
+
+          <div class="editor-field">
+            <label class="editor-label">Тип тайтла</label>
+            <select class="select" id="edType" style="width:100%">
+              <option>TV-сериал</option><option>Фильм</option>
+              <option>OVA</option><option>ONA</option>
+              <option>Спешл</option><option>TV-спешл</option>
+            </select>
+          </div>
+
+          <div class="editor-field">
+            <label class="editor-label">Тир</label>
+            <select class="select" id="edTier" style="width:100%">
+              <option value="SSS">SSS — шедевр</option>
+              <option value="S">S — великолепно</option>
+              <option value="A">A — отлично</option>
+              <option value="B">B — хорошо</option>
+              <option value="C">C — средне</option>
+              <option value="D">D — слабо</option>
+              <option value="E">E — плохо</option>
+            </select>
+          </div>
+
+          <div class="editor-field">
+            <label class="editor-label">Обложка (URL)</label>
+            <input class="input" id="edCover" placeholder="https://…/cover.jpg">
+          </div>
+
+          <div class="editor-field">
+            <label class="editor-label">Жанры</label>
+            <div class="genre-picker">
+              <input class="genre-search" id="edGenreSearch" placeholder="Поиск жанра…">
+              <div class="genre-chips" id="edGenreChips"></div>
+            </div>
+          </div>
+
+          <div class="editor-field">
+            <label class="field-row" style="justify-content:flex-start;gap:10px">
+              <input type="checkbox" id="edFav" class="toggle" style="width:22px;height:22px">
+              <span class="editor-label" style="margin:0">Любимый тайтл</span>
+            </label>
+          </div>
+
+          <div class="editor-field">
+            <label class="editor-label">Составные части (в порядке просмотра)</label>
+            <div class="entries-editor" id="edEntries"></div>
+            <button class="btn btn-ghost" id="edAddEntry" type="button" style="margin-top:10px">+ Добавить часть</button>
+          </div>
+
+          <div class="modal-actions" style="margin-top:20px">
+            <button class="btn btn-primary" id="edSave" type="button">Сохранить тайтл</button>
+            <button class="btn btn-ghost" id="edCancel" type="button">Отмена</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(div);
+
+    $('#editorClose').addEventListener('click', closeEditor);
+    $('#edCancel').addEventListener('click', closeEditor);
+    $('#edSave').addEventListener('click', saveEditor);
+    $('#edAddEntry').addEventListener('click', () => { editorEntries.push(defaultEntry()); renderEntries(); });
+    $('#edGenreSearch').addEventListener('input', renderGenreChips);
+
+    renderGenreChips();
   }
 
-  /* ============================================================
-     ГЛАВНОЕ: ОТПРАВКА data.json НА GITHUB (PUT с SHA)
-     ============================================================ */
-  async function saveToGitHub() {
-    const token = $('#gh-token').value.trim() || loadGhCfg().token;
-    const repo = $('#gh-repo').value.trim();
-    const branch = $('#gh-branch').value.trim() || 'main';
-    const path = ($('#gh-path').value.trim() || 'data.json').replace(/^\/+/, '');
+  /* ==================== Открыть / закрыть редактор ==================== */
+  function openEditor(t) {
+    injectEditorModal();
+    editorId = t ? t.id : null;
+    $('#editorTitle').textContent = t ? 'Редактирование тайтла' : 'Новый тайтл';
 
-    if (!token) { setStatus('err', 'Введите Personal Access Token'); App.showToast('Сначала вставьте токен', 'err'); return; }
-    if (!repo || !/^[^/]+\/[^/]+$/.test(repo)) { setStatus('err', 'Укажите репозиторий в формате «владелец/имя»'); return; }
+    $('#edTitle').value    = t ? (t.title || '') : '';
+    $('#edOriginal').value = t ? (t.titleOriginal || '') : '';
+    $('#edType').value     = t ? (t.type || 'TV-сериал') : 'TV-сериал';
+    $('#edTier').value     = t ? (t.tier || 'A') : 'A';
+    $('#edCover').value    = t ? (t.cover || '') : '';
+    $('#edFav').checked    = !!(t && t.favorite);
 
-    saveGhCfg({ token, repo, branch, path });
-    setStatus('warn', 'Отправка на GitHub…');
-    $('#gh-put').disabled = true;
+    editorGenres = new Set(t ? (t.genres || []) : []);
+    editorEntries = t && t.entries ? JSON.parse(JSON.stringify(t.entries)) : [defaultEntry()];
 
-    try {
-      // 1. Определяем ветку по умолчанию (если поле пустовало) и SHA текущего файла
-      let sha = null;
-      const fileUrl = `https://api.github.com/repos/${repo}/contents/${path}?ref=${encodeURIComponent(branch)}`;
+    renderGenreChips();
+    renderEntries();
 
-      const head = await fetch(fileUrl, { headers: apiHeaders(token), cache: 'no-store' });
-      if (head.ok) {
-        const info = await head.json();
-        sha = info.sha;
-      } else if (head.status !== 404) {
-        throw await ghError(head, `не удалось прочитать текущий ${path}`);
-      }
-      // 404 — файла ещё нет: создадим его без SHA
+    $('#editorModal').classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+  }
 
-      // 2. PUT с обновлённым содержимым
-      const content = utf8ToBase64(App.exportJSON());
-      const message = `Каталог: ${App.titles.length} тайтл(ов) — ${new Date().toLocaleString('ru-RU')}`;
+  function closeEditor() {
+    const m = $('#editorModal');
+    if (m) m.classList.remove('is-open');
+    document.body.style.overflow = '';
+    editorId = null;
+  }
 
-      let put = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
-        method: 'PUT',
-        headers: { ...apiHeaders(token), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, content, sha, branch }),
+  function defaultEntry() {
+    return { kind: 'Сезон 1', episodes: 12, minutesPerEpisode: 24, durationMinutes: null, watchDate: '' };
+  }
+
+  /* ==================== Жанры ==================== */
+  function renderGenreChips() {
+    const wrap = $('#edGenreChips');
+    const q = ($('#edGenreSearch').value || '').toLowerCase();
+    const list = API.ALL_GENRES.filter(g => !q || g.toLowerCase().includes(q));
+    wrap.innerHTML = list.map(g => `
+      <button type="button" class="genre-chip ${editorGenres.has(g) ? 'is-on' : ''}" data-g="${g}">${g}</button>
+    `).join('');
+    wrap.querySelectorAll('.genre-chip').forEach(b => {
+      b.addEventListener('click', () => {
+        const g = b.dataset.g;
+        if (editorGenres.has(g)) editorGenres.delete(g); else editorGenres.add(g);
+        b.classList.toggle('is-on');
       });
+    });
+  }
 
-      // 3. Ретрай при конфликте (файл изменился с момента чтения SHA)
-      if (put.status === 409 || put.status === 422) {
-        const retryHead = await fetch(fileUrl, { headers: apiHeaders(token), cache: 'no-store' });
-        if (retryHead.ok) {
-          sha = (await retryHead.json()).sha;
-          put = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
-            method: 'PUT',
-            headers: { ...apiHeaders(token), 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message, content, sha, branch }),
-          });
+  /* ==================== Части (entries) ==================== */
+  const KINDS = ['Сезон 1','Сезон 2','Сезон 3','Сезон 4','Фильм','Спешл','OVA','ONA','TV-спешл','Клип'];
+
+  function renderEntries() {
+    const wrap = $('#edEntries');
+    wrap.innerHTML = editorEntries.map((e, i) => `
+      <div class="entry-edit" data-i="${i}">
+        <select data-f="kind">${KINDS.map(k =>
+          `<option ${k === e.kind ? 'selected' : ''}>${k}</option>`).join('')}</select>
+        <input type="number" min="0" placeholder="Серий" data-f="episodes" value="${e.episodes ?? ''}">
+        <input type="number" min="0" placeholder="Мин/сер." data-f="minutesPerEpisode" value="${e.minutesPerEpisode ?? ''}">
+        <input type="number" min="0" placeholder="Длит. фильма" data-f="durationMinutes" value="${e.durationMinutes ?? ''}">
+        <input type="text" placeholder="Дата или период (2024-05-01 – 2024-05-20)" data-f="watchDate" value="${API.esc(e.watchDate || '')}">
+        <button class="remove-entry" type="button" data-remove="${i}">✕</button>
+      </div>
+    `).join('');
+
+    wrap.querySelectorAll('input, select').forEach(el => {
+      el.addEventListener('change', () => {
+        const i = +el.closest('.entry-edit').dataset.i;
+        const f = el.dataset.f;
+        let v = el.value;
+        if (['episodes','minutesPerEpisode','durationMinutes'].includes(f)) {
+          v = v === '' ? null : Number(v);
         }
+        editorEntries[i][f] = v;
+      });
+    });
+    wrap.querySelectorAll('[data-remove]').forEach(b => {
+      b.addEventListener('click', () => {
+        editorEntries.splice(+b.dataset.remove, 1);
+        renderEntries();
+      });
+    });
+  }
+
+  /* ==================== Сохранить тайтл ==================== */
+  function saveEditor() {
+    const title = $('#edTitle').value.trim();
+    if (!title) { API.toast('Введите название', 'err'); return; }
+
+    const d = API.getData();
+    const id = editorId || ('t' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6));
+
+    const item = {
+      id,
+      title,
+      titleOriginal: $('#edOriginal').value.trim(),
+      cover: $('#edCover').value.trim(),
+      type: $('#edType').value,
+      genres: Array.from(editorGenres),
+      tier: $('#edTier').value,
+      favorite: $('#edFav').checked,
+      createdAt: editorId
+        ? (d.titles.find(t => t.id === editorId)?.createdAt || new Date().toISOString().slice(0, 10))
+        : new Date().toISOString().slice(0, 10),
+      entries: editorEntries.filter(e => e && (e.episodes || e.durationMinutes || e.watchDate || e.kind))
+    };
+
+    if (editorId) {
+      const i = d.titles.findIndex(t => t.id === editorId);
+      if (i >= 0) d.titles[i] = item; else d.titles.push(item);
+    } else {
+      d.titles.push(item);
+    }
+
+    API.setData(d);
+    API.saveLocal();
+    API.renderAll();
+    closeEditor();
+    API.toast('Тайтл сохранён', 'ok');
+  }
+
+  /* ==================== GitHub Contents API ==================== */
+  async function saveToGithub() {
+    saveGhSettings();
+    const status = $('#syncStatus');
+    const set = (txt, cls) => {
+      status.textContent = txt;
+      status.className = 'sync-status' + (cls ? ' ' + cls : '');
+    };
+
+    if (!gh.token || !gh.repo) {
+      set('Укажите GitHub-токен и репозиторий', 'err');
+      API.setSaveStatus('Ошибка: нет токена/репозитория', 'err');
+      return;
+    }
+
+    set('Получаем SHA текущего файла…', 'busy');
+    API.setSaveStatus('Отправка на GitHub…', 'busy');
+
+    const api = `https://api.github.com/repos/${gh.repo}/contents/${gh.path}`;
+    const headers = {
+      'Authorization': `Bearer ${gh.token}`,
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28'
+    };
+
+    try {
+      // 1) получаем текущий SHA
+      let sha = null;
+      const getRes = await fetch(`${api}?ref=${encodeURIComponent(gh.branch)}`, { headers });
+      if (getRes.ok) {
+        const j = await getRes.json();
+        sha = j.sha;
+      } else if (getRes.status !== 404) {
+        const err = await getRes.json().catch(() => ({}));
+        throw new Error(`Не удалось получить файл: ${getRes.status} ${err.message || ''}`);
       }
 
-      if (!put.ok) throw await ghError(put, 'коммит не прошёл');
+      // 2) формируем контент (utf-8 → base64 с поддержкой кириллицы)
+      const json = JSON.stringify(API.getData(), null, 2);
+      const b64 = btoa(unescape(encodeURIComponent(json)));
 
-      // 4. Успех: синхронизируем локальную копию с отправленной
-      App.saveToLocal();
-      setStatus('ok', `Отправлено на GitHub (${branch}) — появится на сайте через минуту-две`);
-      App.showToast('data.json закоммичен на GitHub', 'ok', 4200);
-    } catch (e) {
-      setStatus('err', e.message);
-      App.showToast('Ошибка сохранения: ' + e.message, 'err', 5000);
-    } finally {
-      $('#gh-put').disabled = false;
-    }
-  }
+      // 3) PUT
+      const body = {
+        message: `Обновление Аниме-Архива (${new Date().toISOString().slice(0, 16).replace('T', ' ')})`,
+        content: b64,
+        branch: gh.branch
+      };
+      if (sha) body.sha = sha;
 
-  // Человекочитаемая ошибка из ответа API
-  async function ghError(res, prefix) {
-    let detail = '';
-    try {
-      const j = await res.json();
-      detail = j.message || '';
-    } catch { /* тело не JSON — игнорируем */ }
-    if (res.status === 401) return new Error(`${prefix}: токен недействителен или истёк (401)`);
-    if (res.status === 403 && /rate limit/i.test(detail)) return new Error(`${prefix}: превышен лимит запросов API, подождите пару минут`);
-    if (res.status === 404) return new Error(`${prefix}: проверьте «владелец/репозиторий», ветку и путь к файлу (404)`);
-    if (res.status === 409) return new Error(`${prefix}: конфликт версий файла (409) — попробуйте ещё раз`);
-    return new Error(`${prefix}: ${detail || 'HTTP ' + res.status}`);
-  }
-
-  /* ============================================================
-     ПРОВЕРКА ТОКЕНА: заодно узнаём ветку по умолчанию
-     ============================================================ */
-  async function checkToken() {
-    const token = $('#gh-token').value.trim();
-    const repo = $('#gh-repo').value.trim();
-    if (!token) { setStatus('err', 'Вставьте токен в поле выше'); return; }
-    if (!repo) { setStatus('err', 'Укажите репозиторий «владелец/имя»'); return; }
-
-    setStatus('warn', 'Проверяю доступ…');
-    try {
-      const res = await fetch(`https://api.github.com/repos/${repo}`, {
-        headers: apiHeaders(token), cache: 'no-store',
+      const putRes = await fetch(api, {
+        method: 'PUT',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
       });
-      if (!res.ok) throw await ghError(res, 'проверка не прошла');
 
-      const info = await res.json();
-      const branch = $('#gh-branch').value.trim() || info.default_branch;
-      $('#gh-branch').value = branch;
-      saveGhCfg({ token, repo, branch, path: $('#gh-path').value.trim() || 'data.json' });
-      setStatus('ok', `Токен работает · репозиторий: ${info.full_name} · ветка: ${branch}`);
-      App.showToast('Подключение к GitHub установлено', 'ok');
+      if (!putRes.ok) {
+        const err = await putRes.json().catch(() => ({}));
+        throw new Error(`${putRes.status}: ${err.message || 'Ошибка GitHub API'}`);
+      }
+
+      set('Отправлено на GitHub ✓', 'ok');
+      API.setSaveStatus('Отправлено на GitHub', 'ok');
+      API.toast('Данные отправлены на GitHub', 'ok');
     } catch (e) {
-      setStatus('err', e.message);
-      App.showToast(e.message, 'err');
+      console.error(e);
+      set('Ошибка: ' + e.message, 'err');
+      API.setSaveStatus('Ошибка GitHub: ' + e.message, 'err');
+      API.toast('Ошибка сохранения на GitHub', 'err');
     }
   }
 
-  /* ============================================================
-     ЭКСПОРТ / ИМПОРТ JSON
-     ============================================================ */
-  function exportJSON() {
-    const blob = new Blob([App.exportJSON()], { type: 'application/json' });
+  /* ==================== Экспорт / импорт ==================== */
+  function exportJson() {
+    const blob = new Blob([JSON.stringify(API.getData(), null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'data.json';
     a.click();
     URL.revokeObjectURL(a.href);
-    App.showToast('Файл data.json скачан', 'ok');
+    API.toast('Файл data.json выгружен', 'ok');
   }
 
-  async function importFile(file) {
+  function importJson(e) {
+    const file = e.target.files[0];
     if (!file) return;
-    try {
-      const text = await file.text();
-      const parsed = JSON.parse(text);
-      const titles = Array.isArray(parsed) ? parsed : parsed.titles;
-      if (!Array.isArray(titles)) throw new Error('в файле нет массива тайтлов');
-      App.setTitles(titles);
-      App.scheduleAutosave();
-      setStatus('warn', 'Импортировано локально — не забудьте «Отправить на GitHub»');
-      App.showToast(`Импортировано тайтлов: ${titles.length}`, 'ok');
-    } catch (e) {
-      App.showToast('Не удалось прочитать файл: ' + e.message, 'err', 5000);
-    }
-  }
-
-  /* ============================================================
-     СОБЫТИЯ
-     ============================================================ */
-  function bind() {
-    $('#gh-check').addEventListener('click', checkToken);
-    $('#gh-put').addEventListener('click', saveToGitHub);
-
-    $('#gh-pull').addEventListener('click', async () => {
+    const r = new FileReader();
+    r.onload = () => {
       try {
-        await App.forceRemoteLoad();          // свежий data.json с сервера
-        App.saveToLocal();                   // локальная копия = серверной
-        setStatus('ok', 'Загружено с GitHub — локальная копия синхронизирована');
-      } catch (e) {
-        setStatus('err', 'Не удалось загрузить: ' + e.message);
+        const parsed = JSON.parse(r.result);
+        if (!parsed || !Array.isArray(parsed.titles)) throw new Error('Ожидается { titles: [...] }');
+        API.setData(parsed);
+        API.saveLocal();
+        API.renderAll();
+        API.toast('Импортировано тайтлов: ' + parsed.titles.length, 'ok');
+      } catch (err) {
+        API.toast('Ошибка импорта: ' + err.message, 'err');
       }
-    });
-
-    $('#btn-export').addEventListener('click', exportJSON);
-
-    $('#btn-import').addEventListener('click', () => $('#imp-file').click());
-    $('#imp-file').addEventListener('change', e => {
-      importFile(e.target.files[0]);
       e.target.value = '';
-    });
-
-    // Перетаскивание файла в дроп-зону
-    const dz = $('#drop-zone');
-    ['dragenter', 'dragover'].forEach(ev =>
-      dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('is-over'); }));
-    ['dragleave', 'drop'].forEach(ev =>
-      dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('is-over'); }));
-    dz.addEventListener('drop', e => importFile(e.dataTransfer.files[0]));
-
-    // Сброс локальной копии (вернуться к версии с GitHub)
-    $('#gh-wipe-local').addEventListener('click', () => {
-      localStorage.removeItem(LS_DATA);
-      App.showToast('Локальная копия сброшена — перезагрузка…', 'info');
-      setTimeout(() => location.reload(), 900);
-    });
-
-    // Любое локальное автосохранение = есть неотправленные правки
-    App.on('local-saved', () => {
-      setStatus('warn', 'Сохранено локально · не отправлено на GitHub');
-    });
+    };
+    r.readAsText(file);
   }
+
+  window.Admin = { init, openEditor, closeEditor };
 })();
