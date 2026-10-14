@@ -1,287 +1,139 @@
-<!DOCTYPE html>
-<html lang="ru" data-theme="dark">
+<!doctype html>
+<html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Аниме-Архив — личный каталог просмотренного</title>
-<meta name="description" content="Личный каталог просмотренных аниме-тайтлов: тиры, статистика, календарь просмотра.">
-<meta name="theme-color" content="#0b0d16">
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;700;800;900&display=swap" rel="stylesheet">
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js" defer></script>
-
-<link rel="stylesheet" href="css/styles.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10101b">
+  <meta name="description" content="Аниме-Архив — личная коллекция просмотренных аниме с тирами, статистикой и календарём.">
+  <title>Аниме-Архив — личная коллекция</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js" defer></script>
+  <script src="js/particles.js" defer></script>
+  <script src="js/stats.js" defer></script>
+  <script src="js/app.js" defer></script>
 </head>
+<body>
+  <canvas id="particle-canvas" class="particle-canvas" aria-hidden="true"></canvas>
+  <div class="ambient ambient--one" aria-hidden="true"></div>
+  <div class="ambient ambient--two" aria-hidden="true"></div>
 
-<body data-owner="false">
-
-<div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
-<div class="bg-aura" aria-hidden="true"></div>
-
-<header class="site-header" id="siteHeader">
-  <div class="header-inner">
-    <a class="logo" href="#" id="logoLink" aria-label="Аниме-Архив — на главную">
-      <span class="logo-mark">ア</span>
-      <span class="logo-text">Аниме-<b>Архив</b></span>
+  <header class="site-header">
+    <a class="brand" href="#archive" aria-label="Аниме-Архив — на главную">
+      <span class="brand__mark" aria-hidden="true">ア</span>
+      <span class="brand__text"><strong>Аниме-Архив</strong><small>твоя история просмотра</small></span>
     </a>
 
-    <nav class="tabs" id="mainTabs" aria-label="Основная навигация">
-      <button class="tab is-active" data-tab="archive" type="button">Архив</button>
-      <button class="tab" data-tab="stats" type="button">Статистика</button>
-      <button class="tab" data-tab="calendar" type="button">Календарь</button>
-      <button class="tab tab-settings" data-tab="settings" type="button">Настройки</button>
+    <button class="icon-button mobile-menu-button" id="mobile-menu-button" aria-label="Открыть меню" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+
+    <nav class="main-nav" id="main-nav" aria-label="Главная навигация">
+      <button class="nav-tab is-active" data-tab="archive" type="button">Архив</button>
+      <button class="nav-tab" data-tab="stats" type="button">Статистика</button>
+      <button class="nav-tab" data-tab="calendar" type="button">Календарь</button>
+      <button class="nav-tab" data-tab="settings" type="button">Настройки</button>
     </nav>
 
     <div class="header-actions">
-      <span class="owner-badge" id="ownerBadge" hidden>Режим владельца</span>
-      <span class="save-status" id="saveStatus" hidden></span>
-      <button class="icon-btn" id="btnSettings" type="button" title="Настройки" aria-label="Настройки">⚙</button>
-      <button class="icon-btn burger" id="btnBurger" type="button" title="Меню" aria-label="Меню">☰</button>
-    </div>
-  </div>
-
-  <div class="filters" id="filtersBar">
-    <div class="filters-inner">
-      <div class="search-wrap">
-        <span class="search-icon" aria-hidden="true">🔍</span>
-        <input type="search" id="searchInput" class="search-input" placeholder="Поиск по названию…" autocomplete="off" aria-label="Поиск по названию">
-        <button class="search-clear" id="searchClear" type="button" hidden aria-label="Очистить поиск">✕</button>
-      </div>
-
-      <select id="filterTier" class="select" aria-label="Фильтр по тиру">
-        <option value="">Все тиры</option>
-        <option value="SSS">SSS — шедевр</option>
-        <option value="S">S — великолепно</option>
-        <option value="A">A — отлично</option>
-        <option value="B">B — хорошо</option>
-        <option value="C">C — средне</option>
-        <option value="D">D — слабо</option>
-        <option value="E">E — плохо</option>
-      </select>
-
-      <select id="filterType" class="select" aria-label="Фильтр по типу">
-        <option value="">Все типы</option>
-        <option value="TV-сериал">TV-сериал</option>
-        <option value="Фильм">Фильм</option>
-        <option value="OVA">OVA</option>
-        <option value="ONA">ONA</option>
-        <option value="Спешл">Спешл</option>
-        <option value="TV-спешл">TV-спешл</option>
-      </select>
-
-      <select id="filterGenre" class="select" aria-label="Фильтр по жанру">
-        <option value="">Все жанры</option>
-      </select>
-
-      <label class="switch-chip" title="Показать только любимые тайтлы">
-        <input type="checkbox" id="filterFav"><span>❤ Любимые</span>
+      <label class="search-box">
+        <span class="sr-only">Поиск по названию</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"></circle><path d="m16 16 5 5"></path></svg>
+        <input id="search-input" type="search" placeholder="Найти тайтл…" autocomplete="off">
+        <kbd>/</kbd>
       </label>
-
-      <select id="viewMode" class="select" aria-label="Вид отображения">
-        <option value="grid">Сетка</option>
-        <option value="list">Список</option>
-        <option value="compact">Компактный список</option>
-      </select>
-
-      <button class="btn btn-ghost" id="btnResetFilters" type="button">Сбросить</button>
-      <button class="btn btn-primary" id="btnAddTitle" type="button" data-owner-only hidden>+ Добавить тайтл</button>
+      <button class="icon-button settings-shortcut" id="settings-shortcut" type="button" aria-label="Открыть настройки" title="Настройки">⚙</button>
     </div>
-  </div>
-</header>
+  </header>
 
-<main class="site-main">
-  <section class="view is-active" id="view-archive">
-    <section class="tier-panel" id="tierPanel" aria-label="Распределение тайтлов по тирам"></section>
-
-    <section class="latest" id="latestSection">
-      <div class="section-head">
-        <h2 class="section-title">Последние добавленные</h2>
-        <span class="section-sub" id="latestCount"></span>
+  <main class="page-shell">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero__copy">
+        <p class="eyebrow"><span class="status-dot"></span> ЛИЧНАЯ КОЛЛЕКЦИЯ</p>
+        <h1 id="hero-title">Каждая история<br><span>оставляет след.</span></h1>
+        <p class="hero__description">Архив просмотренного, любимые миры и истории, к которым хочется вернуться.</p>
       </div>
-      <div class="latest-strip" id="latestStrip"></div>
+      <div class="hero__summary glass-panel">
+        <div><span class="summary-label">В архиве</span><strong id="hero-title-count">—</strong><span class="summary-foot">тайтлов</span></div>
+        <div class="summary-divider"></div>
+        <div><span class="summary-label">Время просмотра</span><strong id="hero-watch-time">—</strong><span class="summary-foot">всего</span></div>
+        <div class="summary-orbit" aria-hidden="true">✦</div>
+      </div>
     </section>
 
-    <div class="tier-sections" id="tierSections"></div>
-
-    <div class="empty-state" id="emptyState" hidden>
-      <div class="empty-emoji">🌸</div>
-      <h3>Ничего не найдено</h3>
-      <p>Попробуйте изменить фильтры или сбросить поиск.</p>
-      <button class="btn btn-ghost" id="btnEmptyReset" type="button">Сбросить фильтры</button>
-    </div>
-  </section>
-
-  <section class="view" id="view-stats">
-    <div class="summary-grid" id="summaryGrid"></div>
-    <div class="charts-grid">
-      <div class="chart-card glass">
-        <h3 class="chart-title">Самые просматриваемые жанры</h3>
-        <div class="chart-box chart-box--tall"><canvas id="chartGenres" aria-label="Диаграмма жанров"></canvas></div>
+    <section class="tier-overview glass-panel" aria-label="Распределение тайтлов по тирам">
+      <div class="section-kicker"><span>УРОВНИ КОЛЛЕКЦИИ</span><span class="section-kicker__line"></span></div>
+      <div class="tier-overview__items" id="tier-overview">
+        <p class="loading-note">Загружаем архив…</p>
       </div>
-      <div class="chart-card glass">
-        <h3 class="chart-title">Распределение по тирам</h3>
-        <div class="chart-box chart-box--tall"><canvas id="chartTiers" aria-label="Диаграмма тиров"></canvas></div>
+    </section>
+
+    <section class="recent-section" aria-labelledby="recent-title">
+      <div class="section-heading">
+        <div><p class="eyebrow">СВЕЖИЕ ДОБАВЛЕНИЯ</p><h2 id="recent-title">Недавно в архиве <span class="heading-sparkle">✧</span></h2></div>
+        <button class="text-button" type="button" data-tab-link="archive">Весь архив <span aria-hidden="true">↗</span></button>
       </div>
-      <div class="chart-card glass chart-card--wide">
-        <h3 class="chart-title">Динамика просмотра по месяцам</h3>
-        <div class="chart-box"><canvas id="chartMonths" aria-label="График по месяцам"></canvas></div>
-      </div>
-    </div>
-  </section>
+      <div class="recent-strip" id="recent-strip"><p class="loading-note">Подготавливаем мини-карточки…</p></div>
+    </section>
 
-  <section class="view" id="view-calendar">
-    <div class="calendar-toolbar glass">
-      <button class="icon-btn" id="calPrev" type="button" aria-label="Предыдущий месяц">‹</button>
-      <h3 class="calendar-title" id="calTitle">—</h3>
-      <button class="icon-btn" id="calNext" type="button" aria-label="Следующий месяц">›</button>
-      <button class="btn btn-ghost" id="calToday" type="button">Сегодня</button>
-      <div class="segmented" id="calModeSwitch" role="tablist">
-        <button class="seg is-active" data-calmode="grid" type="button">Календарь</button>
-        <button class="seg" data-calmode="list" type="button">Список</button>
-      </div>
-    </div>
-    <div class="cal-grid glass" id="calGrid"></div>
-    <div class="cal-list" id="calList" hidden></div>
-    <div class="cal-tooltip" id="calTooltip" hidden></div>
-  </section>
-</main>
-
-<footer class="site-footer">
-  <span>Аниме-Архив · личный каталог · данные хранятся в <code>data.json</code></span>
-  <span class="footer-sep">•</span>
-  <span id="footerStats">—</span>
-</footer>
-
-<div class="settings-backdrop" id="settingsBackdrop" hidden></div>
-
-<aside class="settings-panel" id="settingsPanel" aria-hidden="true" aria-label="Настройки">
-  <div class="settings-head">
-    <h2>Настройки</h2>
-    <button class="icon-btn" id="btnSettingsClose" type="button" aria-label="Закрыть">✕</button>
-  </div>
-
-  <div class="settings-body">
-    <section class="settings-group">
-      <h3>Тема и внешний вид</h3>
-      <label class="field">
-        <span class="field-label">Тема</span>
-        <select id="setTheme" class="select" style="width:100%">
-          <option value="dark">Тёмная</option>
-          <option value="light">Светлая</option>
-        </select>
-      </label>
-      <label class="field">
-        <span class="field-label">Акцентный цвет</span>
-        <div class="accent-row">
-          <input type="color" id="setAccent" class="color-input" value="#ff5f9e">
-          <div class="accent-swatches" id="accentSwatches"></div>
+    <section class="archive-section tab-panel is-visible" id="panel-archive" aria-labelledby="archive-title">
+      <div class="section-heading archive-heading">
+        <div><p class="eyebrow">ВСЕ ТВОИ ИСТОРИИ</p><h2 id="archive-title">Архив <span class="muted-count" id="archive-count"></span></h2></div>
+        <div class="view-switcher" role="group" aria-label="Вид каталога">
+          <button type="button" class="view-button is-active" data-view="grid" aria-label="Сетка" title="Сетка">▦</button>
+          <button type="button" class="view-button" data-view="list" aria-label="Список" title="Список">☷</button>
+          <button type="button" class="view-button" data-view="compact" aria-label="Компактный список" title="Компактный список">≡</button>
         </div>
-      </label>
-      <label class="field field-row">
-        <span class="field-label">Все анимации</span>
-        <input type="checkbox" id="setAnimations" class="toggle" checked>
-      </label>
-      <label class="field field-row">
-        <span class="field-label">Параллакс фона</span>
-        <input type="checkbox" id="setParallax" class="toggle" checked>
-      </label>
-    </section>
-
-    <section class="settings-group">
-      <h3>Фоновая анимация</h3>
-      <div class="preset-grid" id="presetGrid"></div>
-      <label class="field">
-        <span class="field-label">Плотность частиц <b id="valDensity">35</b></span>
-        <input type="range" id="setDensity" min="0" max="160" step="1" value="35">
-      </label>
-      <label class="field">
-        <span class="field-label">Скорость падения <b id="valSpeed">1.0</b></span>
-        <input type="range" id="setSpeed" min="0.1" max="3" step="0.1" value="1">
-      </label>
-      <label class="field">
-        <span class="field-label">Размер частиц <b id="valSize">1.0</b></span>
-        <input type="range" id="setSize" min="0.3" max="2.5" step="0.1" value="1">
-      </label>
-    </section>
-
-    <section class="settings-group">
-      <h3>Каталог</h3>
-      <label class="field">
-        <span class="field-label">Вид списка тайтлов</span>
-        <select id="setViewMode" class="select" style="width:100%">
-          <option value="grid">Сетка карточек</option>
-          <option value="list">Список</option>
-          <option value="compact">Компактный список</option>
-        </select>
-      </label>
-      <label class="field">
-        <span class="field-label">Размер карточек <b id="valCardSize">1.0</b></span>
-        <input type="range" id="setCardSize" min="0.7" max="1.6" step="0.05" value="1">
-      </label>
-      <label class="field">
-        <span class="field-label">Колонок на десктопе <b id="valColumns">9</b></span>
-        <input type="range" id="setColumns" min="4" max="12" step="1" value="9">
-      </label>
-    </section>
-
-    <section class="settings-group">
-      <h3>Длительности по умолчанию</h3>
-      <label class="field">
-        <span class="field-label">Средняя длительность серии, мин</span>
-        <input type="number" id="setAvgEpisode" class="input" min="1" max="180" step="1" value="24">
-      </label>
-      <label class="field">
-        <span class="field-label">Средняя длительность фильма, мин</span>
-        <input type="number" id="setAvgMovie" class="input" min="1" max="400" step="1" value="110">
-      </label>
-    </section>
-
-    <section class="settings-group" data-owner-only hidden>
-      <h3>Данные и синхронизация</h3>
-      <p class="hint">Токен хранится только в вашем браузере (localStorage) и отправляется только на api.github.com.</p>
-      <label class="field">
-        <span class="field-label">GitHub Personal Access Token (права <code>repo</code>)</span>
-        <input type="password" id="setToken" class="input" placeholder="ghp_…" autocomplete="off">
-      </label>
-      <label class="field">
-        <span class="field-label">Репозиторий (<code>владелец/репозиторий</code>)</span>
-        <input type="text" id="setRepo" class="input" placeholder="username/anime-archive">
-      </label>
-      <label class="field">
-        <span class="field-label">Ветка</span>
-        <input type="text" id="setBranch" class="input" placeholder="main" value="main">
-      </label>
-      <label class="field">
-        <span class="field-label">Путь к файлу данных</span>
-        <input type="text" id="setPath" class="input" placeholder="data.json" value="data.json">
-      </label>
-      <div class="settings-actions">
-        <button class="btn btn-primary" id="btnSaveGithub" type="button">Сохранить на GitHub</button>
-        <button class="btn btn-ghost" id="btnExportJson" type="button">Экспорт JSON</button>
-        <button class="btn btn-ghost" id="btnImportJson" type="button">Импорт JSON</button>
-        <input type="file" id="importFile" accept="application/json,.json" hidden>
       </div>
-      <div class="sync-status" id="syncStatus">Готово к работе</div>
+
+      <div class="filter-bar glass-panel">
+        <label class="filter-field"><span>Тир</span><select id="filter-tier"><option value="">Все тиры</option><option>SSS</option><option>S</option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option></select></label>
+        <label class="filter-field"><span>Жанр</span><select id="filter-genre"><option value="">Все жанры</option></select></label>
+        <label class="filter-field"><span>Тип</span><select id="filter-type"><option value="">Все типы</option><option>TV-сериал</option><option>Фильм</option><option>OVA</option><option>ONA</option><option>Спешл</option><option>TV-спешл</option></select></label>
+        <label class="favorite-filter"><input id="filter-favorites" type="checkbox"><span class="favorite-filter__heart">♥</span> Только любимые</label>
+        <button class="clear-filters" id="clear-filters" type="button">Сбросить</button>
+      </div>
+
+      <div id="archive-content" class="archive-content">
+        <div class="empty-state"><span class="empty-state__icon">✧</span><h3>Архив готовится</h3><p>Тайтлы появятся здесь после загрузки данных.</p></div>
+      </div>
+    </section>
+
+    <section class="tab-panel stats-panel" id="panel-stats" hidden>
+      <div class="section-heading"><div><p class="eyebrow">ЦИФРЫ И ПРИВЫЧКИ</p><h2>Статистика</h2></div></div>
+      <div id="stats-summary" class="stats-summary"></div>
+      <div class="charts-grid">
+        <article class="glass-panel chart-card"><h3>Любимые жанры</h3><p>По количеству тайтлов в каждом жанре</p><div class="chart-wrap chart-wrap--bar"><canvas id="genres-chart" aria-label="Диаграмма жанров"></canvas></div></article>
+        <article class="glass-panel chart-card"><h3>Распределение по тирам</h3><p>Как оценивается коллекция</p><div class="chart-wrap"><canvas id="tiers-chart" aria-label="Диаграмма тиров"></canvas></div></article>
+        <article class="glass-panel chart-card chart-card--wide"><h3>Динамика просмотра</h3><p>Части тайтлов по месяцам</p><div class="chart-wrap chart-wrap--line"><canvas id="monthly-chart" aria-label="Динамика просмотра по месяцам"></canvas></div></article>
+      </div>
+    </section>
+
+    <section class="tab-panel calendar-panel" id="panel-calendar" hidden>
+      <div class="section-heading"><div><p class="eyebrow">ТВОЯ ИСТОРИЯ ПО ДНЯМ</p><h2>Календарь просмотра</h2></div>
+        <div class="calendar-mode-switch" role="group" aria-label="Режим календаря"><button class="is-active" data-calendar-mode="calendar" type="button">Календарь</button><button data-calendar-mode="list" type="button">Список</button></div>
+      </div>
+      <div class="calendar-toolbar glass-panel"><button class="icon-button" id="calendar-prev" type="button" aria-label="Предыдущий месяц">←</button><h3 id="calendar-month-label">—</h3><button class="icon-button" id="calendar-next" type="button" aria-label="Следующий месяц">→</button></div>
+      <div id="calendar-content" class="calendar-content"></div>
+    </section>
+
+    <section class="tab-panel settings-panel" id="panel-settings" hidden>
+      <div class="section-heading"><div><p class="eyebrow">ПОДСТРОЙ ПОД СЕБЯ</p><h2>Настройки</h2></div></div>
+      <div id="settings-content" class="settings-layout"></div>
+    </section>
+
+    <footer class="site-footer"><span class="footer-mark">ア</span><span>Аниме-Архив</span><span class="footer-separator">·</span><span>Твоя коллекция, твои истории.</span><span class="footer-spacer"></span><span id="data-status" class="data-status">Подключение к архиву…</span></footer>
+  </main>
+
+  <div class="modal-backdrop" id="modal-backdrop" hidden>
+    <section class="title-modal glass-panel" id="title-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <button class="modal-close icon-button" id="modal-close" type="button" aria-label="Закрыть окно">×</button>
+      <div id="modal-content"></div>
     </section>
   </div>
-</aside>
-
-<div class="modal" id="titleModal" aria-hidden="true">
-  <div class="modal-overlay" aria-hidden="true"></div>
-  <div class="modal-window glass" role="dialog" aria-modal="true" aria-labelledby="modalTitleText">
-    <button class="modal-close" id="modalClose" type="button" aria-label="Закрыть">✕</button>
-    <div class="modal-body" id="modalBody"></div>
-  </div>
-</div>
-
-<div class="toasts" id="toasts" aria-live="polite" aria-atomic="false"></div>
-
-<script src="js/particles.js" defer></script>
-<script src="js/stats.js" defer></script>
-<script src="js/app.js" defer></script>
+  <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
 </body>
 </html>
