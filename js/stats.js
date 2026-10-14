@@ -1,335 +1,247 @@
-/* ============================================================
-   АНИМЕ-БУНКО — stats.js (финальная версия)
-   Вкладка «Статистика»: сводные числа и три диаграммы Chart.js.
-   Цвета тиров синхронизированы с новой палитрой styles.css.
-   ============================================================ */
+/* =====================================================================
+   stats.js — расчёт и отрисовка статистики (Chart.js)
+   Экспортирует window.Stats с методами render(archive).
+   archive — массив тайтлов из app.js
+   ===================================================================== */
+
 (function () {
   'use strict';
 
-  const TIER_HEX = {
-    SSS: '#f2c14e', S: '#ff9130', A: '#ff4d5e', B: '#2fd398',
-    C: '#3fa9ff', D: '#a476ff', E: '#ff4d9d',
-  };
-  const MONTHS_SHORT = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
-
   const charts = {};
+  let avgEpisode = 24, avgMovie = 110;
 
-  function palette() {
-    const cs = getComputedStyle(document.documentElement);
-    const v = name => cs.getPropertyValue(name).trim();
+  function setAverages(e, m) { avgEpisode = e || 24; avgMovie = m || 110; }
+
+  /* -------- Утилиты -------- */
+  const fmtTime = min => {
+    min = Math.round(min);
+    if (min < 60) return min + ' мин';
+    const h = Math.floor(min / 60), m = min % 60;
+    if (h < 24) return h + ' ч' + (m ? ' ' + m + ' мин' : '');
+    const d = Math.floor(h / 24);
+    return d + ' д ' + (h % 24) + ' ч';
+  };
+  const pct = (v, t) => t ? Math.round(v / t * 100) + '%' : '0%';
+
+  /* -------- Время записи (сезон/фильм/спешл) -------- */
+  function entryMinutes(entry) {
+    if (entry.durationMinutes != null) return Number(entry.durationMinutes) || 0;
+    const eps = Number(entry.episodes) || 0;
+    if (!eps) return Number(avgMovie) || 110;
+    const mpe = Number(entry.minutesPerEpisode) || avgEpisode;
+    return eps * mpe;
+  }
+  window.calcEntryMinutes = entryMinutes;
+
+  /* -------- Общее время тайтла -------- */
+  function titleMinutes(t) {
+    return (t.entries || []).reduce((s, e) => s + entryMinutes(e), 0);
+  }
+  window.calcTitleMinutes = titleMinutes;
+
+  /* -------- Полный пересчёт метрик -------- */
+  function compute(archive) {
+    const total = archive.length;
+    const totalMinutes = archive.reduce((s, t) => s + titleMinutes(t), 0);
+
+    let films = 0, series = 0, episodes = 0, filmMinutes = 0;
+
+    archive.forEach(t => {
+      (t.entries || []).forEach(e => {
+        const kind = (e.kind || '').toLowerCase();
+        const eps = Number(e.episodes) || 0;
+        const isFilm = kind.includes('фильм') || (!eps && e.durationMinutes != null);
+        if (isFilm) {
+          films++;
+          filmMinutes += entryMinutes(e);
+        } else {
+          series++;
+          episodes += eps;
+        }
+      });
+    });
+
+    const tierCounts = { SSS: 0, S: 0, A: 0, B: 0, C: 0, D: 0, E: 0 };
+    archive.forEach(t => { if (tierCounts[t.tier] != null) tierCounts[t.tier]++; });
+
+    // Жанры
+    const genreCounts = {};
+    archive.forEach(t => (t.genres || []).forEach(g => genreCounts[g] = (genreCounts[g] || 0) + 1));
+    const topGenres = Object.entries(genreCounts).sort((a, b) => b[1] - a[1]).slice(0, 12);
+
+    // По месяцам (по дате начала просмотра)
+    const monthCounts = {};
+    archive.forEach(t => (t.entries || []).forEach(e => {
+      const start = parseStartDate(e.watchDate);
+      if (!start) return;
+      const key = start.getFullYear() + '-' + String(start.getMonth() + 1).padStart(2, '0');
+      const eps = Number(e.episodes) || 1;
+      monthCounts[key] = (monthCounts[key] || 0) + eps;
+    }));
+    const monthsSorted = Object.keys(monthCounts).sort();
+    const monthLabels = monthsSorted.map(k => {
+      const [y, m] = k.split('-');
+      return ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'][+m - 1] + ' ' + y.slice(2);
+    });
+    const monthData = monthsSorted.map(k => monthCounts[k]);
+
     return {
-      accent: v('--accent') || '#ff4d6d',
-      text: v('--text') || '#efeaf4',
-      text2: v('--text-2') || '#a79dbb',
-      text3: v('--text-3') || '#6f6780',
-      border: v('--border') || 'rgba(255,255,255,.075)',
+      total, totalMinutes, films, series, episodes, filmMinutes,
+      avgPerTitle: total ? Math.round(totalMinutes / total) : 0,
+      tierCounts, topGenres, monthLabels, monthData
     };
   }
 
-  const isActive = () => document.getElementById('tab-stats')?.classList.contains('is-active');
-
-  /* ---------- Заглушки «нет данных» (canvas не удаляем — чинится повторный рендер) ---------- */
-  function showChartEmpty(card, msg) {
-    const box = card.querySelector('.chart-box');
-    if (!box) return;
-    let note = box.querySelector('.chart-empty');
-    if (!note) {
-      note = document.createElement('p');
-      note.className = 'chart-empty';
-      note.style.cssText = 'padding:60px 0;text-align:center;color:var(--text-3);font-size:13px;margin:0;';
-      box.appendChild(note);
-    }
-    note.textContent = msg;
-    const cv = box.querySelector('canvas');
-    if (cv) cv.style.display = 'none';
+  function parseStartDate(str) {
+    if (!str) return null;
+    const s = String(str).split(/[–—-]/)[0].trim();
+    const m = s.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return null;
+    return new Date(+m[1], +m[2] - 1, +m[3]);
   }
-  function hideChartEmpty(card) {
-    const box = card.querySelector('.chart-box');
-    const note = box?.querySelector('.chart-empty');
-    if (note) note.remove();
-    const cv = box?.querySelector('canvas');
-    if (cv) cv.style.display = '';
-  }
+  window.parseStartDate = parseStartDate;
 
-  /* ============================================================
-     РЕНДЕР ВСЕЙ ВКЛАДКИ
-     ============================================================ */
-  function render() {
-    if (!window.App || typeof Chart === 'undefined') return;
-
-    const App = window.App;
-    const titles = App.titles;
-    const pal = palette();
-
-    Chart.defaults.font.family = "'Manrope', sans-serif";
-    Chart.defaults.font.size = 12;
-    Chart.defaults.color = pal.text2;
-
-    renderHero(titles, App);
-    renderGenresChart(titles, pal);
-    renderTiersChart(titles, pal);
-    renderMonthsChart(titles, pal, App);
-  }
-
-  /* ---------- Сводные числа ---------- */
-  function renderHero(titles, App) {
-    const serials = titles.filter(t => t.type === 'TV-сериал').length;
-    // Фильмы — по частям: и отдельные тайтлы, и фильмы внутри сериалов
-    const movieParts = titles.reduce((n, t) =>
-      n + (t.entries || []).filter(e => e.kind === 'Фильм').length, 0);
-    const episodes = titles.reduce((n, t) => n + App.totalEpisodes(t), 0);
-    const { movieMin, totalMin } = App.movieStats();
-    const avg = titles.length ? totalMin / titles.length : 0;
-
-    const items = [
-      [titles.length, 'Тайтлов'],
-      [serials, 'Сериалов'],
-      [movieParts, 'Фильмов'],
-      [episodes, 'Серий'],
-      [App.fmtMin(totalMin), 'Общее время'],
-      [App.fmtMin(movieMin), 'Время фильмов'],
-      [App.fmtMin(avg), 'В среднем на тайтл'],
+  /* -------- Сводные карточки -------- */
+  function renderSummary(m) {
+    const wrap = document.getElementById('summaryGrid');
+    if (!wrap) return;
+    const cards = [
+      { v: m.total,            l: 'Всего тайтлов' },
+      { v: m.series,           l: 'Сезонов/частей' },
+      { v: m.episodes,         l: 'Серий' },
+      { v: m.films,            l: 'Фильмов' },
+      { v: fmtTime(m.totalMinutes), l: 'Общее время' },
+      { v: fmtTime(m.filmMinutes),  l: 'Время фильмов', n: 'включая фильмы внутри сериалов' },
+      { v: fmtTime(m.avgPerTitle),  l: 'Среднее на тайтл' }
     ];
-
-    document.getElementById('stats-hero').innerHTML = items.map(([num, label]) => `
-      <div class="stat-big">
-        <div class="stat-big__num">${num}</div>
-        <div class="stat-big__label">${label}</div>
-      </div>`).join('');
+    wrap.innerHTML = cards.map((c, i) => `
+      <div class="summary-card" style="animation-delay:${i * 60}ms">
+        <div class="sum-val">${c.v}</div>
+        <div class="sum-lbl">${c.l}</div>
+        ${c.n ? `<div class="sum-note">${c.n}</div>` : ''}
+      </div>
+    `).join('');
   }
 
-  /* ---------- Жанры: горизонтальные бары с процентами ---------- */
-  function renderGenresChart(titles, pal) {
-    const el = document.getElementById('chart-genres');
-    if (!el) return;
-    destroy('genres');
-    const card = el.closest('.stat-card');
+  /* -------- Диаграммы -------- */
+  const CHART_FONT = { family: 'Manrope', size: 12 };
 
-    const counts = new Map();
-    titles.forEach(t => (t.genres || []).forEach(g => counts.set(g, (counts.get(g) || 0) + 1)));
-    const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
-    const total = titles.length || 1;
+  function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
 
-    if (!top.length) { showChartEmpty(card, 'Нет данных о жанрах'); return; }
-    hideChartEmpty(card);
-
+  function renderGenreChart(m) {
+    const el = document.getElementById('chartGenres'); if (!el) return;
+    destroyChart('genres');
+    const labels = m.topGenres.map(g => g[0]);
+    const data = m.topGenres.map(g => g[1]);
+    const total = m.total || 1;
     charts.genres = new Chart(el, {
       type: 'bar',
-      data: {
-        labels: top.map(([g]) => g),
-        datasets: [{
-          data: top.map(([, n]) => +(n / total * 100).toFixed(1)),
-          backgroundColor: pal.accent,
-          hoverBackgroundColor: pal.text,
-          borderRadius: 6,
-          maxBarThickness: 20,
-        }],
-      },
-      options: {
-        indexAxis: 'y',
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: { duration: 750, easing: 'easeOutQuart' },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: ctx => {
-                const [, n] = top[ctx.dataIndex];
-                return `${n} тайтл(ов) · ${ctx.parsed.x}%`;
-              },
-            },
-          },
-        },
-        scales: {
-          x: {
-            max: 100,
-            grid: { color: pal.border },
-            title: { display: true, text: '% от всех тайтлов', color: pal.text3 },
-            ticks: { callback: v => v + '%' },
-          },
-          y: { grid: { display: false }, ticks: { color: pal.text } },
-        },
-      },
-    });
-  }
-
-  /* ---------- Тиры: donut с числом в центре ---------- */
-  const centerTextPlugin = {
-    id: 'centerText',
-    afterDraw(chart) {
-      if (chart.config.type !== 'doughnut') return;
-      const meta = chart.getDatasetMeta(0);
-      if (!meta.data.length) return;
-      const { x, y } = meta.data[0];
-      const pal = palette();
-      const total = chart.$total ?? '';
-      const ctx = chart.ctx;
-      ctx.save();
-      ctx.textAlign = 'center';
-      ctx.fillStyle = pal.text;
-      ctx.font = "800 28px 'Unbounded', sans-serif";
-      ctx.fillText(total, x, y + 2);
-      ctx.fillStyle = pal.text3;
-      ctx.font = "700 10px 'Manrope', sans-serif";
-      ctx.fillText('ТАЙТЛОВ', x, y + 21);
-      ctx.restore();
-    },
-  };
-
-  function renderTiersChart(titles, pal) {
-    const el = document.getElementById('chart-tiers');
-    if (!el) return;
-    destroy('tiers');
-    const card = el.closest('.stat-card');
-
-    const counts = window.App.TIER_KEYS.map(k => titles.filter(t => t.tier === k).length);
-    const total = titles.length;
-
-    if (!total) { showChartEmpty(card, 'Каталог пуст'); return; }
-    hideChartEmpty(card);
-
-    charts.tiers = new Chart(el, {
-      type: 'doughnut',
-      data: {
-        labels: window.App.TIER_KEYS,
-        datasets: [{
-          data: counts,
-          backgroundColor: window.App.TIER_KEYS.map(k => TIER_HEX[k]),
-          borderColor: 'rgba(0,0,0,0)',
-          hoverOffset: 9,
-          borderWidth: 2,
-        }],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '64%',
-        animation: { duration: 800, easing: 'easeOutQuart', animateRotate: true },
-        plugins: {
-          legend: {
-            position: 'bottom',
-            labels: {
-              color: pal.text,
-              usePointStyle: true,
-              pointStyle: 'circle',
-              padding: 14,
-              font: { weight: 700 },
-              generateLabels: chart => {
-                const data = chart.data.datasets[0].data;
-                const sum = data.reduce((a, b) => a + b, 0) || 1;
-                return chart.data.labels.map(lbl => ({
-                  text: `${lbl} · ${Math.round(data[chart.data.labels.indexOf(lbl)] / sum * 100)}%`,
-                  fillStyle: TIER_HEX[lbl],
-                  index: chart.data.labels.indexOf(lbl),
-                  fontColor: pal.text,
-                }));
-              },
-            },
-          },
-          tooltip: {
-            callbacks: {
-              label: ctx => ` ${ctx.parsed} тайтл(ов) · ${Math.round(ctx.parsed / total * 100)}%`,
-            },
-          },
-        },
-      },
-      plugins: [centerTextPlugin],
-    });
-    charts.tiers.$total = total;
-  }
-
-  /* ---------- Динамика по месяцам (линия) ---------- */
-  function renderMonthsChart(titles, pal, App) {
-    const el = document.getElementById('chart-months');
-    if (!el) return;
-    destroy('months');
-
-    // Минуты по месяцу НАЧАЛА просмотра каждой части
-    const byMonth = new Map();
-    titles.forEach(t => (t.entries || []).forEach(e => {
-      const pd = App.parseWatchDate(e.watchDate);
-      if (!pd) return;
-      const key = App.monthKey(pd.start);
-      byMonth.set(key, (byMonth.get(key) || 0) + App.entryMinutes(e, App.settings, t.type));
-    }));
-
-    const now = new Date();
-    let end = new Date(now.getFullYear(), now.getMonth(), 1);
-    let start = new Date(end);
-    const keys = [...byMonth.keys()].sort();
-    if (keys.length) {
-      const [y, m] = keys[0].split('-').map(Number);
-      start = new Date(y, m - 1, 1);
-    } else {
-      start = new Date(end.getFullYear(), end.getMonth() - 11, 1);
-    }
-    if (end - start > 36 * 31 * 864e5) start = new Date(end.getFullYear(), end.getMonth() - 35, 1);
-
-    const labels = [], data = [];
-    for (let d = new Date(start); d <= end; d.setMonth(d.getMonth() + 1)) {
-      labels.push(`${MONTHS_SHORT[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`);
-      data.push(Math.round(byMonth.get(App.monthKey(d)) || 0));
-    }
-
-    const note = document.getElementById('months-note');
-    if (note) note.textContent = data.some(v => v > 0)
-      ? `от ${labels[0]} до ${labels[labels.length - 1]}` : 'нет данных';
-
-    const ctx2d = el.getContext('2d');
-    const grad = ctx2d.createLinearGradient(0, 0, 0, 280);
-    grad.addColorStop(0, pal.accent + '55');
-    grad.addColorStop(1, pal.accent + '00');
-
-    charts.months = new Chart(el, {
-      type: 'line',
       data: {
         labels,
         datasets: [{
           data,
-          borderColor: pal.accent,
-          backgroundColor: grad,
-          fill: true,
-          tension: 0.35,
-          borderWidth: 2.5,
-          pointRadius: 2.5,
-          pointHoverRadius: 6,
-          pointBackgroundColor: pal.accent,
-          pointBorderColor: 'transparent',
-        }],
+          backgroundColor: labels.map((_, i) =>
+            `hsl(${(i * 47) % 360} 75% 62% / .82)`),
+          borderRadius: 6,
+          barThickness: 14
+        }]
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: { duration: 850, easing: 'easeOutQuart' },
-        interaction: { mode: 'index', intersect: false },
+        indexAxis: 'y',
+        responsive: true, maintainAspectRatio: false,
+        animation: { duration: 900, easing: 'easeOutQuart' },
         plugins: {
           legend: { display: false },
           tooltip: {
-            callbacks: { label: ctx => ` Просмотрено: ${App.fmtMin(ctx.parsed.y)}` },
-          },
+            callbacks: { label: c => ` ${c.parsed.x} тайтл(ов) · ${pct(c.parsed.x, total)}` }
+          }
         },
         scales: {
-          x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkipPadding: 18 } },
-          y: {
-            grid: { color: pal.border },
-            ticks: { callback: v => v >= 60 ? (v / 60) + ' ч' : v + ' м' },
-          },
-        },
-      },
+          x: { grid: { color: 'rgba(255,255,255,.06)' }, ticks: { color: '#9aa3c4', font: CHART_FONT } },
+          y: { grid: { display: false }, ticks: { color: '#eef1ff', font: CHART_FONT } }
+        }
+      }
     });
   }
 
-  function destroy(name) {
-    if (charts[name]) { charts[name].destroy(); delete charts[name]; }
+  function renderTierChart(m) {
+    const el = document.getElementById('chartTiers'); if (!el) return;
+    destroyChart('tiers');
+    const order = ['SSS','S','A','B','C','D','E'];
+    const labels = order;
+    const data = order.map(k => m.tierCounts[k] || 0);
+    const total = m.total || 1;
+    const colors = ['#ffd700','#ff9a3c','#ff4d6d','#3ddc97','#4dabff','#b388ff','#ff5fbf'];
+
+    charts.tiers = new Chart(el, {
+      type: 'doughnut',
+      data: {
+        labels,
+        datasets: [{
+          data,
+          backgroundColor: colors,
+          borderColor: 'rgba(0,0,0,.35)',
+          borderWidth: 2,
+          hoverOffset: 10
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '62%',
+        animation: { animateRotate: true, duration: 1000 },
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { color: '#eef1ff', font: CHART_FONT, padding: 14, usePointStyle: true, pointStyle: 'circle' }
+          },
+          tooltip: {
+            callbacks: { label: c => ` ${c.label}: ${c.parsed} · ${pct(c.parsed, total)}` }
+          }
+        }
+      }
+    });
   }
 
-  /* ---------- Подписки ---------- */
-  document.addEventListener('DOMContentLoaded', () => {
-    if (!window.App) return;
-    window.App.on('data-changed', () => { if (isActive()) render(); });
-    window.App.on('settings-changed', () => { if (isActive()) render(); });
-  });
+  function renderMonthsChart(m) {
+    const el = document.getElementById('chartMonths'); if (!el) return;
+    destroyChart('months');
+    charts.months = new Chart(el, {
+      type: 'line',
+      data: {
+        labels: m.monthLabels,
+        datasets: [{
+          data: m.monthData,
+          borderColor: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#ff5f9e',
+          backgroundColor: 'rgba(255,95,158,.15)',
+          fill: true, tension: .35,
+          pointRadius: 4, pointHoverRadius: 7,
+          borderWidth: 3
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        animation: { duration: 1100, easing: 'easeOutQuart' },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: c => ` ${c.parsed.y} серий/частей` } }
+        },
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,.05)' }, ticks: { color: '#9aa3c4', font: CHART_FONT } },
+          y: { grid: { color: 'rgba(255,255,255,.05)' }, ticks: { color: '#9aa3c4', font: CHART_FONT }, beginAtZero: true }
+        }
+      }
+    });
+  }
 
-  window.ArchiveStats = { render };
+  /* -------- Публичный API -------- */
+  window.Stats = {
+    setAverages,
+    compute,
+    render(archive) {
+      const m = compute(archive);
+      renderSummary(m);
+      renderGenreChart(m);
+      renderTierChart(m);
+      renderMonthsChart(m);
+    }
+  };
 })();
