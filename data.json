@@ -4,7 +4,7 @@
       "id": "t1",
       "title": "Атака титанов",
       "titleOriginal": "Shingeki no Kyojin",
-      "cover": "https://picsum.photos/seed/aot/400/560",
+      "cover": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 560'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23ff5f9e'/><stop offset='1' stop-color='%237c5cff'/></linearGradient></defs><rect width='400' height='560' fill='url(%23g)'/><text x='200' y='300' font-size='180' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='900'>A</text></svg>",
       "type": "TV-сериал",
       "genres": ["Экшен/Боевик", "Драма", "Тёмное фэнтези", "Военное"],
       "tier": "SSS",
@@ -12,31 +12,28 @@
       "createdAt": "2024-01-15",
       "entries": [
         { "kind": "Сезон 1", "episodes": 25, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2023-11-01 – 2023-11-20" },
-        { "kind": "Сезон 2", "episodes": 12, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2023-12-01 – 2023-12-10" },
-        { "kind": "Сезон 3", "episodes": 22, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2024-01-02 – 2024-01-18" },
-        { "kind": "Фильм", "episodes": null, "minutesPerEpisode": null, "durationMinutes": 118, "watchDate": "2024-01-20" }
+        { "kind": "Сезон 2", "episodes": 12, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2023-12-01 – 2023-12-10" }
       ]
     },
     {
       "id": "t2",
       "title": "Ванпанчмен",
       "titleOriginal": "One Punch Man",
-      "cover": "https://picsum.photos/seed/opm/400/560",
+      "cover": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 560'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23ff8a3d'/><stop offset='1' stop-color='%23ff4d6d'/></linearGradient></defs><rect width='400' height='560' fill='url(%23g)'/><text x='200' y='300' font-size='180' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='900'>O</text></svg>",
       "type": "TV-сериал",
       "genres": ["Экшен/Боевик", "Комедия", "Пародия", "Сверхспособности"],
       "tier": "S",
       "favorite": true,
       "createdAt": "2024-02-03",
       "entries": [
-        { "kind": "Сезон 1", "episodes": 12, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2024-02-05 – 2024-02-12" },
-        { "kind": "Сезон 2", "episodes": 12, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2024-03-01 – 2024-03-09" }
+        { "kind": "Сезон 1", "episodes": 12, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2024-02-05 – 2024-02-12" }
       ]
     },
     {
       "id": "t3",
       "title": "Унесённые призраками",
       "titleOriginal": "Sen to Chihiro no Kamikakushi",
-      "cover": "https://picsum.photos/seed/spirited/400/560",
+      "cover": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 560'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%234dabff'/><stop offset='1' stop-color='%232ecc71'/></linearGradient></defs><rect width='400' height='560' fill='url(%23g)'/><text x='200' y='300' font-size='180' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='900'>S</text></svg>",
       "type": "Фильм",
       "genres": ["Приключения", "Фэнтези", "Мифология", "Семейное"],
       "tier": "SSS",
@@ -50,22 +47,21 @@
       "id": "t4",
       "title": "Моя геройская академия",
       "titleOriginal": "Boku no Hero Academia",
-      "cover": "https://picsum.photos/seed/mha/400/560",
+      "cover": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 560'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23b388ff'/><stop offset='1' stop-color='%234dabff'/></linearGradient></defs><rect width='400' height='560' fill='url(%23g)'/><text x='200' y='300' font-size='180' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='900'>B</text></svg>",
       "type": "TV-сериал",
       "genres": ["Экшен/Боевик", "Сверхспособности", "Школа", "Сёнэн"],
       "tier": "A",
       "favorite": false,
       "createdAt": "2024-03-10",
       "entries": [
-        { "kind": "Сезон 1", "episodes": 13, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2024-03-12 – 2024-03-20" },
-        { "kind": "Сезон 2", "episodes": 25, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2024-04-01 – 2024-04-22" }
+        { "kind": "Сезон 1", "episodes": 13, "minutesPerEpisode": 24, "durationMinutes": null, "watchDate": "2024-03-12 – 2024-03-20" }
       ]
     },
     {
       "id": "t5",
       "title": "Тетрадь смерти",
       "titleOriginal": "Death Note",
-      "cover": "https://picsum.photos/seed/deathnote/400/560",
+      "cover": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 560'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23ff5fbf'/><stop offset='1' stop-color='%23c9184a'/></linearGradient></defs><rect width='400' height='560' fill='url(%23g)'/><text x='200' y='300' font-size='180' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='900'>D</text></svg>",
       "type": "TV-сериал",
       "genres": ["Триллер", "Психологическое", "Детектив", "Сверхъестественное"],
       "tier": "S",
@@ -79,7 +75,7 @@
       "id": "t6",
       "title": "Дорохедоро",
       "titleOriginal": "Dorohedoro",
-      "cover": "https://picsum.photos/seed/doro/400/560",
+      "cover": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 560'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%232ecc71'/><stop offset='1' stop-color='%23ffd54a'/></linearGradient></defs><rect width='400' height='560' fill='url(%23g)'/><text x='200' y='300' font-size='180' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='900'>D</text></svg>",
       "type": "ONA",
       "genres": ["Тёмное фэнтези", "Экшен/Боевик", "Комедия", "Мистика"],
       "tier": "B",
